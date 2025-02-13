@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Rețea Socială Dinamică</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Roboto', sans-serif;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .title {
+            text-align: center;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+        .description {
+            text-align: center;
+            color: #666;
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #4dabf7;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: 'Roboto', sans-serif;
+        }
+        button:hover {
+            background: #339af0;
+        }
+        button:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+        }
+        .progress {
+            margin-top: 10px;
+            text-align: center;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const width = 800;
+        const height = 600;
+        const centerX = width / 2;
+        const centerY = height / 2;
+
+        const fixedNodes = [
+            { id: 1, x: centerX - 200, y: centerY - 150 },
+            { id: 2, x: centerX - 100, y: centerY - 200 },
+            { id: 3, x: centerX + 100, y: centerY - 200 },
+            { id: 4, x: centerX + 200, y: centerY - 150 },
+            { id: 5, x: centerX + 250, y: centerY - 50 },
+            { id: 6, x: centerX + 250, y: centerY + 50 },
+            { id: 7, x: centerX + 200, y: centerY + 150 },
+            { id: 8, x: centerX + 100, y: centerY + 200 },
+            { id: 9, x: centerX - 100, y: centerY + 200 },
+            { id: 10, x: centerX - 200, y: centerY + 150 },
+            { id: 11, x: centerX - 250, y: centerY + 50 },
+            { id: 12, x: centerX - 250, y: centerY - 50 },
+            { id: 13, x: centerX, y: centerY - 150 },
+            { id: 14, x: centerX + 150, y: centerY },
+            { id: 15, x: centerX, y: centerY + 150 },
+            { id: 16, x: centerX - 150, y: centerY }
+        ];
+
+        const initialGroups = fixedNodes.map((_, i) => i < fixedNodes.length/2 ? 1 : 2);
+
+        const changes = [
+            // Conexiuni inițiale în grupul 1
+            { type: 'edge', action: 'add', source: 1, target: 2 },
+            { type: 'edge', action: 'add', source: 2, target: 13 },
+            { type: 'edge', action: 'add', source: 13, target: 3 },
+            { type: 'edge', action: 'add', source: 3, target: 4 },
+            { type: 'edge', action: 'add', source: 4, target: 5 },
+            // Conexiuni în grupul 2
+            { type: 'edge', action: 'add', source: 9, target: 10 },
+            { type: 'edge', action: 'add', source: 10, target: 11 },
+            { type: 'edge', action: 'add', source: 11, target: 12 },
+            { type: 'edge', action: 'add', source: 12, target: 1 },
+            // Conexiunea între grupuri cauzează schimbarea culorii
+            { type: 'edge', action: 'add', source: 12, target: 1 },
+            { type: 'color', nodeId: 12, newGroup: 1 },
+            { type: 'edge', action: 'add', source: 11, target: 16 },
+            { type: 'color', nodeId: 11, newGroup: 1 },
+            // Mai multe conexiuni în cadrul grupului
+            { type: 'edge', action: 'add', source: 5, target: 14 },
+            { type: 'edge', action: 'add', source: 14, target: 6 },
+            { type: 'edge', action: 'add', source: 6, target: 7 },
+            // Altă conexiune între grupuri
+            { type: 'edge', action: 'add', source: 7, target: 15 },
+            { type: 'color', nodeId: 15, newGroup: 1 },
+            // Conexiuni dense în grupul convertit
+            { type: 'edge', action: 'add', source: 15, target: 14 },
+            { type: 'edge', action: 'add', source: 14, target: 13 },
+            // Mai multe conexiuni și conversii între grupuri
+            { type: 'edge', action: 'add', source: 15, target: 9 },
+            { type: 'color', nodeId: 9, newGroup: 1 },
+            { type: 'edge', action: 'add', source: 9, target: 8 },
+            { type: 'color', nodeId: 8, newGroup: 1 },
+            // Conexiuni finale
+            { type: 'edge', action: 'add', source: 8, target: 7 },
+            { type: 'edge', action: 'add', source: 7, target: 14 },
+            { type: 'edge', action: 'add', source: 14, target: 4 },
+            { type: 'edge', action: 'add', source: 4, target: 13 },
+            { type: 'edge', action: 'add', source: 13, target: 16 },
+            { type: 'edge', action: 'add', source: 16, target: 1 },
+            // Ultima conversie între grupuri
+            { type: 'edge', action: 'add', source: 10, target: 9 },
+            { type: 'color', nodeId: 10, newGroup: 1 }
+        ];
+
+        function App() {
+            const [step, setStep] = React.useState(0);
+            const [nodeGroups, setNodeGroups] = React.useState(initialGroups);
+            const [activeLinks, setActiveLinks] = React.useState([]);
+            const [isPlaying, setIsPlaying] = React.useState(true);
+            const intervalRef = React.useRef(null);
+
+            const handleStep = () => {
+                if (step < changes.length) {
+                    const change = changes[step];
+                    
+                    if (change.type === 'color') {
+                        setNodeGroups(prev => {
+                            const next = [...prev];
+                            next[change.nodeId - 1] = change.newGroup;
+                            return next;
+                        });
+                    } else if (change.type === 'edge') {
+                        if (change.action === 'add') {
+                            setActiveLinks(prev => [...prev, { source: change.source, target: change.target }]);
+                        }
+                    }
+                    setStep(prev => prev + 1);
+                } else {
+                    setNodeGroups(initialGroups);
+                    setActiveLinks([]);
+                    setStep(0);
+                }
+            };
+
+            React.useEffect(() => {
+                if (isPlaying) {
+                    intervalRef.current = setInterval(handleStep, 1000);
+                    return () => clearInterval(intervalRef.current);
+                }
+            }, [isPlaying, step]);
+
+            const colors = ['#4dabf7', '#ff6b6b'];
+            const nodeRadius = 12;
+
+            return (
+                <div className="container">
+                    <div className="title">Rețea socială dinamică</div>
+                    <div className="description">
+                        Nodurile reprezintă persoane (roșu = fumători, albastru = nefumători) iar liniile reprezintă relațiile sociale dintre ele. 
+                        Pe măsură ce rețeaua evoluează, observăm cum comportamentul de fumat se răspândește prin conexiunile sociale existente și cum se formează noi legături între persoanele cu comportamente similare.
+                    </div>
+                    
+                    <div className="controls">
+                        <button onClick={() => setIsPlaying(!isPlaying)}>
+                            {isPlaying ? 'Pauză' : 'Pornește'}
+                        </button>
+                        <button onClick={() => !isPlaying && handleStep()} disabled={isPlaying}>
+                            Următorul Pas
+                        </button>
+                        <button onClick={() => {
+                            setStep(0);
+                            setNodeGroups(initialGroups);
+                            setActiveLinks([]);
+                        }}>
+                            Resetează
+                        </button>
+                    </div>
+                    
+                    <svg 
+                        width="100%" 
+                        height="100%" 
+                        viewBox={`0 0 ${width} ${height}`}
+                        style={{maxHeight: '600px'}}
+                    >
+                        {/* Legendă */}
+                        <g transform="translate(20, 20)">
+                            <circle cx="10" cy="10" r="6" fill="#4dabf7"/>
+                            <text x="25" y="15" className="text-sm">Nefumători</text>
+                            <circle cx="10" cy="35" r="6" fill="#ff6b6b"/>
+                            <text x="25" y="40" className="text-sm">Fumători</text>
+                        </g>
+
+                        {/* Links */}
+                        {activeLinks.map((link, i) => {
+                            const sourceNode = fixedNodes[link.source - 1];
+                            const targetNode = fixedNodes[link.target - 1];
+                            return (
+                                <line
+                                    key={`${link.source}-${link.target}`}
+                                    x1={sourceNode.x}
+                                    y1={sourceNode.y}
+                                    x2={targetNode.x}
+                                    y2={targetNode.y}
+                                    stroke="#999"
+                                    strokeWidth="1.5"
+                                    strokeOpacity="0.4"
+                                />
+                            );
+                        })}
+                        
+                        {/* Nodes */}
+                        {fixedNodes.map((node, i) => (
+                            <g 
+                                key={i}
+                                transform={`translate(${node.x},${node.y})`}
+                            >
+                                <circle
+                                    r={nodeRadius}
+                                    fill={colors[nodeGroups[i] - 1]}
+                                    style={{transition: 'fill 500ms ease-in-out'}}
+                                    opacity="0.9"
+                                />
+                                <text
+                                    dy=".35em"
+                                    textAnchor="middle"
+                                    fill="white"
+                                    fontSize="10"
+                                >
+                                    {node.id}
+                                </text>
+                            </g>
+                        ))}
+                    </svg>
+                    <div className="progress">
+                        Pasul {step} din {changes.length}
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
