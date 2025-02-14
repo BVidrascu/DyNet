@@ -79,24 +79,51 @@
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        function playDing() {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.05);
-            
-            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.25);
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.25);
-        }
+          let sharedAudioContext = null;
+
+function initAudioContext() {
+  if (!sharedAudioContext) {
+    sharedAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    // Attach a one-time click listener to resume the context if needed.
+    document.addEventListener('click', () => {
+      if (sharedAudioContext.state === 'suspended') {
+        sharedAudioContext.resume();
+      }
+    }, { once: true });
+  }
+}
+
+function playDing() {
+  // Ensure the AudioContext is initialized.
+  initAudioContext();
+
+  // Resume if necessary before playing.
+  if (sharedAudioContext.state === 'suspended') {
+    sharedAudioContext.resume().then(() => {
+      playSound();
+    });
+  } else {
+    playSound();
+  }
+
+  function playSound() {
+    const oscillator = sharedAudioContext.createOscillator();
+    const gainNode = sharedAudioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(sharedAudioContext.destination);
+    
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(1200, sharedAudioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(600, sharedAudioContext.currentTime + 0.05);
+    
+    gainNode.gain.setValueAtTime(0.2, sharedAudioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, sharedAudioContext.currentTime + 0.25);
+    
+    oscillator.start(sharedAudioContext.currentTime);
+    oscillator.stop(sharedAudioContext.currentTime + 0.25);
+  }
+}
 
         const width = 800;
         const height = 600;
