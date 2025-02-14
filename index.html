@@ -73,12 +73,12 @@
             stroke-dashoffset: 1000;
             animation: drawEdge 0.5s ease-out forwards;
         }
+        /* Removed sound-toggle specific styles as we'll use the default button styles */
     </style>
 </head>
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        // [Previous sound effect function remains exactly the same]
         function playDing() {
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             const oscillator = audioContext.createOscillator();
@@ -165,6 +165,7 @@
             const [flashingNode, setFlashingNode] = React.useState(null);
             const [flashCount, setFlashCount] = React.useState(0);
             const [isPlaying, setIsPlaying] = React.useState(true);
+            const [isSoundEnabled, setIsSoundEnabled] = React.useState(true);
             const intervalRef = React.useRef(null);
             const flashIntervalRef = React.useRef(null);
 
@@ -201,7 +202,9 @@
                                 return next;
                             });
                         }, 600);
-                        playDing();
+                        if (isSoundEnabled) {
+                            playDing();
+                        }
                     } else if (change.type === 'edge') {
                         if (change.action === 'add') {
                             const sourceNode = fixedNodes[change.source - 1];
@@ -213,9 +216,8 @@
                                 progress: 0
                             }]);
                             
-                            // Animate the edge
                             const startTime = Date.now();
-                            const duration = 500; // 500ms animation
+                            const duration = 500;
                             
                             const animate = () => {
                                 const now = Date.now();
@@ -276,6 +278,9 @@
                         }}>
                             Resetează
                         </button>
+                        <button onClick={() => setIsSoundEnabled(!isSoundEnabled)}>
+                            {isSoundEnabled ? '🔊 Sunet Pornit' : '🔇 Sunet Oprit'}
+                        </button>
                     </div>
                     
                     <svg 
@@ -308,7 +313,6 @@
                             const targetNode = fixedNodes[link.target - 1];
                             const dx = targetNode.x - sourceNode.x;
                             const dy = targetNode.y - sourceNode.y;
-                            // Calculate the current point along the line based on progress
                             const currentX = sourceNode.x + dx * (link.progress || 1);
                             const currentY = sourceNode.y + dy * (link.progress || 1);
                             
