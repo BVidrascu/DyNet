@@ -9,6 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <style>
+        /* [Previous styles remain exactly the same] */
         body {
             margin: 0;
             padding: 20px;
@@ -68,6 +69,29 @@
 <body>
     <div id="root"></div>
     <script type="text/babel">
+        // Sound effect function
+        function playDing() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Using a square wave for a crisper sound
+            oscillator.type = 'sine';
+            // Higher frequency for a more satisfying blip
+            oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.05);
+            
+            // Longer envelope with extended decay
+            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.25);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.25);
+        }
+
         const width = 800;
         const height = 600;
         const centerX = width / 2;
@@ -95,6 +119,7 @@
         const initialGroups = fixedNodes.map((_, i) => i < fixedNodes.length/2 ? 1 : 2);
 
         const changes = [
+            // [Previous changes array remains exactly the same]
             // Conexiuni inițiale în grupul 1
             { type: 'edge', action: 'add', source: 1, target: 2 },
             { type: 'edge', action: 'add', source: 2, target: 13 },
@@ -142,19 +167,51 @@
             const [step, setStep] = React.useState(0);
             const [nodeGroups, setNodeGroups] = React.useState(initialGroups);
             const [activeLinks, setActiveLinks] = React.useState([]);
+            const [animatingEdges, setAnimatingEdges] = React.useState(new Set());
+            const [edgeProgress, setEdgeProgress] = React.useState({});
             const [isPlaying, setIsPlaying] = React.useState(true);
+            const [flashingNode, setFlashingNode] = React.useState(null);
+            const [flashCount, setFlashCount] = React.useState(0);
             const intervalRef = React.useRef(null);
+            const flashIntervalRef = React.useRef(null);
+
+            // Function to handle flashing animation
+            const handleFlash = (nodeId, oldGroup, newGroup) => {
+                setFlashingNode(nodeId);
+                setFlashCount(0);
+                
+                if (flashIntervalRef.current) {
+                    clearInterval(flashIntervalRef.current);
+                }
+                
+                flashIntervalRef.current = setInterval(() => {
+                    setFlashCount(count => {
+                        if (count >= 5) { // Stop after 5 flashes
+                            clearInterval(flashIntervalRef.current);
+                            setFlashingNode(null);
+                            return count;
+                        }
+                        return count + 1;
+                    });
+                }, 100); // Flash every 100ms
+            };
 
             const handleStep = () => {
                 if (step < changes.length) {
                     const change = changes[step];
                     
                     if (change.type === 'color') {
-                        setNodeGroups(prev => {
-                            const next = [...prev];
-                            next[change.nodeId - 1] = change.newGroup;
-                            return next;
-                        });
+                        if (change.type === 'color') {
+                            handleFlash(change.nodeId, nodeGroups[change.nodeId - 1], change.newGroup);
+                            setTimeout(() => {
+                                setNodeGroups(prev => {
+                                    const next = [...prev];
+                                    next[change.nodeId - 1] = change.newGroup;
+                                    return next;
+                                });
+                            }, 600); // Change color after flashing
+                            playDing();
+                        } // Play sound when color changes
                     } else if (change.type === 'edge') {
                         if (change.action === 'add') {
                             setActiveLinks(prev => [...prev, { source: change.source, target: change.target }]);
@@ -208,6 +265,17 @@
                         viewBox={`0 0 ${width} ${height}`}
                         style={{maxHeight: '600px'}}
                     >
+                        <defs>
+                            <filter id="glow">
+                                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                                <feFlood floodColor="gold" floodOpacity="0.5" result="glowColor"/>
+                                <feComposite in="glowColor" in2="coloredBlur" operator="in" result="softGlow"/>
+                                <feMerge>
+                                    <feMergeNode in="softGlow"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                        </defs>
                         {/* Legendă */}
                         <g transform="translate(20, 20)">
                             <circle cx="10" cy="10" r="6" fill="#4dabf7"/>
@@ -220,13 +288,22 @@
                         {activeLinks.map((link, i) => {
                             const sourceNode = fixedNodes[link.source - 1];
                             const targetNode = fixedNodes[link.target - 1];
+                            const edgeId = `${link.source}-${link.target}`;
+                            const progress = edgeProgress[edgeId] || 1;
+                            
+                            // Calculate the midpoint
+                            const dx = targetNode.x - sourceNode.x;
+                            const dy = targetNode.y - sourceNode.y;
+                            const midX = sourceNode.x + dx * progress;
+                            const midY = sourceNode.y + dy * progress;
+                            
                             return (
                                 <line
                                     key={`${link.source}-${link.target}`}
                                     x1={sourceNode.x}
                                     y1={sourceNode.y}
-                                    x2={targetNode.x}
-                                    y2={targetNode.y}
+                                    x2={animatingEdges.has(edgeId) ? midX : targetNode.x}
+                                    y2={animatingEdges.has(edgeId) ? midY : targetNode.y}
                                     stroke="#999"
                                     strokeWidth="1.5"
                                     strokeOpacity="0.4"
@@ -242,8 +319,12 @@
                             >
                                 <circle
                                     r={nodeRadius}
-                                    fill={colors[nodeGroups[i] - 1]}
-                                    style={{transition: 'fill 500ms ease-in-out'}}
+                                    fill={node.id === flashingNode ? 
+                                        (flashCount % 2 === 0 ? colors[0] : colors[1]) : 
+                                        colors[nodeGroups[i] - 1]}
+                                    style={{
+                                        transition: node.id === flashingNode ? 'none' : 'fill 500ms ease-in-out'
+                                    }}
                                     opacity="0.9"
                                 />
                                 <text
