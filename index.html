@@ -126,36 +126,33 @@
 
         const changes = [
             { type: 'edge', action: 'add', source: 1, target: 2 },
-            { type: 'edge', action: 'add', source: 2, target: 13 },
+            { type: 'edge', action: 'add', source: 2, target: 3 },
+            { type: 'edge', action: 'add', source: 1, target: 3 },
+            { type: 'edge', action: 'add', source: 1, target: 5 },
             { type: 'edge', action: 'add', source: 13, target: 3 },
+            { type: 'color', nodeId: 13, newGroup: 1 },
             { type: 'edge', action: 'add', source: 3, target: 4 },
+            { type: 'edge', action: 'add', source: 3, target: 5 },
             { type: 'edge', action: 'add', source: 4, target: 5 },
             { type: 'edge', action: 'add', source: 9, target: 10 },
+            { type: 'edge', action: 'add', source: 16, target: 10 },
             { type: 'edge', action: 'add', source: 10, target: 11 },
-            { type: 'edge', action: 'add', source: 11, target: 12 },
-            { type: 'edge', action: 'add', source: 12, target: 1 },
-            { type: 'color', nodeId: 12, newGroup: 1 },
             { type: 'edge', action: 'add', source: 11, target: 16 },
-            { type: 'color', nodeId: 11, newGroup: 1 },
-            { type: 'edge', action: 'add', source: 5, target: 14 },
-            { type: 'edge', action: 'add', source: 14, target: 6 },
-            { type: 'edge', action: 'add', source: 6, target: 7 },
-            { type: 'edge', action: 'add', source: 7, target: 15 },
-            { type: 'color', nodeId: 15, newGroup: 1 },
-            { type: 'edge', action: 'add', source: 15, target: 14 },
-            { type: 'edge', action: 'add', source: 14, target: 13 },
-            { type: 'edge', action: 'add', source: 15, target: 9 },
-            { type: 'color', nodeId: 9, newGroup: 1 },
+            { type: 'edge', action: 'add', source: 11, target: 12 },
+            { type: 'edge', action: 'add', source: 9, target: 15 },
+            { type: 'edge', action: 'add', source: 16, target: 15 },
+            { type: 'edge', action: 'add', source: 15, target: 8 },
             { type: 'edge', action: 'add', source: 9, target: 8 },
-            { type: 'color', nodeId: 8, newGroup: 1 },
+            { type: 'color', nodeId: 8, newGroup: 2 },
             { type: 'edge', action: 'add', source: 8, target: 7 },
-            { type: 'edge', action: 'add', source: 7, target: 14 },
-            { type: 'edge', action: 'add', source: 14, target: 4 },
-            { type: 'edge', action: 'add', source: 4, target: 13 },
-            { type: 'edge', action: 'add', source: 13, target: 16 },
-            { type: 'edge', action: 'add', source: 16, target: 1 },
-            { type: 'edge', action: 'add', source: 10, target: 9 },
-            { type: 'color', nodeId: 10, newGroup: 1 }
+            { type: 'edge', action: 'add', source: 5, target: 6 },
+            { type: 'edge', action: 'add', source: 5, target: 14 },
+            { type: 'color', nodeId: 14, newGroup: 1 },
+            { type: 'edge', action: 'add', source: 6, target: 7 },
+            { type: 'edge', action: 'add', source: 16, target: 7 },
+            { type: 'edge', action: 'add', source: 14, target: 6 },
+            { type: 'edge', action: 'add', source: 15, target: 7 },
+            { type: 'color', nodeId: 7, newGroup: 2 }
         ];
 
         function App() {
@@ -217,7 +214,7 @@
                             }]);
                             
                             const startTime = Date.now();
-                            const duration = 500;
+                            const duration = 450;
                             
                             const animate = () => {
                                 const now = Date.now();
@@ -248,7 +245,7 @@
 
             React.useEffect(() => {
                 if (isPlaying) {
-                    intervalRef.current = setInterval(handleStep, 1000);
+                    intervalRef.current = setInterval(handleStep, 700);
                     return () => clearInterval(intervalRef.current);
                 }
             }, [isPlaying, step]);
