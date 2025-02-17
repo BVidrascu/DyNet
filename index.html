@@ -1,364 +1,401 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>Rețea Socială Dinamică</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-    <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: 'Roboto', sans-serif;
-            background: #f0f0f0;
-        }
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 20px;
-        }
-        .title {
-            text-align: center;
-            margin-bottom: 1rem;
-            font-size: 1.25rem;
-            font-weight: bold;
-        }
-        .description {
-            text-align: center;
-            color: #666;
-            margin-bottom: 1.5rem;
-            font-size: 0.875rem;
-        }
-        .controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            justify-content: center;
-        }
-        button {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            background: #4dabf7;
-            color: white;
-            cursor: pointer;
-            font-size: 14px;
-            font-family: 'Roboto', sans-serif;
-        }
-        button:hover {
-            background: #339af0;
-        }
-        button:disabled {
-            background: #aaa;
-            cursor: not-allowed;
-        }
-        .progress {
-            margin-top: 10px;
-            text-align: center;
-            color: #666;
-        }
-        @keyframes drawEdge {
-            to {
-                stroke-dashoffset: 0;
-            }
-        }
-        .edge-line {
-            stroke-dasharray: 1000;
-            stroke-dashoffset: 1000;
-            animation: drawEdge 0.5s ease-out forwards;
-        }
-        /* Removed sound-toggle specific styles as we'll use the default button styles */
-    </style>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>Rețea Socială Dinamică</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <style>
+      body {
+          margin: 0;
+          padding: 20px;
+          font-family: 'Roboto', sans-serif;
+          background: #f0f0f0;
+      }
+      .container {
+          max-width: 1000px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 10px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          padding: 20px;
+      }
+      .title {
+          text-align: center;
+          margin-bottom: 1rem;
+          font-size: 1.25rem;
+          font-weight: bold;
+      }
+      .description {
+          text-align: center;
+          color: #666;
+          margin-bottom: 1.5rem;
+          font-size: 0.875rem;
+      }
+      .controls {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-bottom: 20px;
+          justify-content: center;
+          align-items: center;
+      }
+      button {
+          padding: 8px 16px;
+          border: none;
+          border-radius: 4px;
+          background: #4dabf7;
+          color: white;
+          cursor: pointer;
+          font-size: 14px;
+          font-family: 'Roboto', sans-serif;
+      }
+      button:hover {
+          background: #339af0;
+      }
+      button:disabled {
+          background: #aaa;
+          cursor: not-allowed;
+      }
+      .progress {
+          margin-top: 10px;
+          text-align: center;
+          color: #666;
+      }
+      .slider-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 5px;
+      }
+      input[type="range"] {
+          width: 200px;
+      }
+      @keyframes drawEdge {
+          to {
+              stroke-dashoffset: 0;
+          }
+      }
+      .edge-line {
+          stroke-dasharray: 1000;
+          stroke-dashoffset: 1000;
+          animation: drawEdge 0.5s ease-out forwards;
+      }
+  </style>
 </head>
 <body>
-    <div id="root"></div>
-    <script type="text/babel">
-        function playDing() {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.05);
-            
-            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.25);
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.25);
-        }
+  <div id="root"></div>
+  <script type="text/babel">
+      function playDing() {
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
+          oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.05);
+          
+          gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.25);
+          
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.25);
+      }
 
-        const width = 800;
-        const height = 600;
-        const centerX = width / 2;
-        const centerY = height / 2;
+      const width = 800;
+      const height = 600;
+      const centerX = width / 2;
+      const centerY = height / 2;
 
-        const fixedNodes = [
-            { id: 1, x: centerX - 200, y: centerY - 150 },
-            { id: 2, x: centerX - 100, y: centerY - 200 },
-            { id: 3, x: centerX + 100, y: centerY - 200 },
-            { id: 4, x: centerX + 200, y: centerY - 150 },
-            { id: 5, x: centerX + 250, y: centerY - 50 },
-            { id: 6, x: centerX + 250, y: centerY + 50 },
-            { id: 7, x: centerX + 200, y: centerY + 150 },
-            { id: 8, x: centerX + 100, y: centerY + 200 },
-            { id: 9, x: centerX - 100, y: centerY + 200 },
-            { id: 10, x: centerX - 200, y: centerY + 150 },
-            { id: 11, x: centerX - 250, y: centerY + 50 },
-            { id: 12, x: centerX - 250, y: centerY - 50 },
-            { id: 13, x: centerX, y: centerY - 150 },
-            { id: 14, x: centerX + 150, y: centerY },
-            { id: 15, x: centerX, y: centerY + 150 },
-            { id: 16, x: centerX - 150, y: centerY }
-        ];
+      const fixedNodes = [
+          { id: 1, x: centerX - 200, y: centerY - 150 },
+          { id: 2, x: centerX - 100, y: centerY - 200 },
+          { id: 3, x: centerX + 100, y: centerY - 200 },
+          { id: 4, x: centerX + 200, y: centerY - 150 },
+          { id: 5, x: centerX + 250, y: centerY - 50 },
+          { id: 6, x: centerX + 250, y: centerY + 50 },
+          { id: 7, x: centerX + 200, y: centerY + 150 },
+          { id: 8, x: centerX + 100, y: centerY + 200 },
+          { id: 9, x: centerX - 100, y: centerY + 200 },
+          { id: 10, x: centerX - 200, y: centerY + 150 },
+          { id: 11, x: centerX - 250, y: centerY + 50 },
+          { id: 12, x: centerX - 250, y: centerY - 50 },
+          { id: 13, x: centerX, y: centerY - 150 },
+          { id: 14, x: centerX + 150, y: centerY },
+          { id: 15, x: centerX, y: centerY + 150 },
+          { id: 16, x: centerX - 150, y: centerY }
+      ];
 
-        const initialGroups = fixedNodes.map((_, i) => i < fixedNodes.length/2 ? 1 : 2);
+      const initialGroups = fixedNodes.map((_, i) => i < fixedNodes.length/2 ? 1 : 2);
 
-        const changes = [
-            { type: 'edge', action: 'add', source: 1, target: 2 },
-            { type: 'edge', action: 'add', source: 2, target: 3 },
-            { type: 'edge', action: 'add', source: 1, target: 3 },
-            { type: 'edge', action: 'add', source: 1, target: 5 },
-            { type: 'edge', action: 'add', source: 13, target: 3 },
-            { type: 'color', nodeId: 13, newGroup: 1 },
-            { type: 'edge', action: 'add', source: 3, target: 4 },
-            { type: 'edge', action: 'add', source: 3, target: 5 },
-            { type: 'edge', action: 'add', source: 4, target: 5 },
-            { type: 'edge', action: 'add', source: 9, target: 10 },
-            { type: 'edge', action: 'add', source: 16, target: 10 },
-            { type: 'edge', action: 'add', source: 10, target: 11 },
-            { type: 'edge', action: 'add', source: 11, target: 16 },
-            { type: 'edge', action: 'add', source: 11, target: 12 },
-            { type: 'edge', action: 'add', source: 9, target: 15 },
-            { type: 'edge', action: 'add', source: 16, target: 15 },
-            { type: 'edge', action: 'add', source: 15, target: 8 },
-            { type: 'edge', action: 'add', source: 9, target: 8 },
-            { type: 'color', nodeId: 8, newGroup: 2 },
-            { type: 'edge', action: 'add', source: 8, target: 7 },
-            { type: 'edge', action: 'add', source: 5, target: 6 },
-            { type: 'edge', action: 'add', source: 5, target: 14 },
-            { type: 'color', nodeId: 14, newGroup: 1 },
-            { type: 'edge', action: 'add', source: 6, target: 7 },
-            { type: 'edge', action: 'add', source: 16, target: 7 },
-            { type: 'edge', action: 'add', source: 14, target: 6 },
-            { type: 'edge', action: 'add', source: 15, target: 7 },
-            { type: 'color', nodeId: 7, newGroup: 2 }
-        ];
+      const changes = [
+          { type: 'edge', action: 'add', source: 1, target: 2 },
+          { type: 'edge', action: 'add', source: 2, target: 3 },
+          { type: 'edge', action: 'add', source: 1, target: 3 },
+          { type: 'edge', action: 'add', source: 1, target: 5 },
+          { type: 'edge', action: 'add', source: 13, target: 3 },
+          { type: 'color', nodeId: 13, newGroup: 1 },
+          { type: 'edge', action: 'add', source: 3, target: 4 },
+          { type: 'edge', action: 'add', source: 3, target: 5 },
+          { type: 'edge', action: 'add', source: 4, target: 5 },
+          { type: 'edge', action: 'add', source: 9, target: 10 },
+          { type: 'edge', action: 'add', source: 16, target: 10 },
+          { type: 'edge', action: 'add', source: 10, target: 11 },
+          { type: 'edge', action: 'add', source: 11, target: 16 },
+          { type: 'edge', action: 'add', source: 11, target: 12 },
+          { type: 'edge', action: 'add', source: 9, target: 15 },
+          { type: 'edge', action: 'add', source: 16, target: 15 },
+          { type: 'edge', action: 'add', source: 15, target: 8 },
+          { type: 'edge', action: 'add', source: 9, target: 8 },
+          { type: 'color', nodeId: 8, newGroup: 2 },
+          { type: 'edge', action: 'add', source: 8, target: 7 },
+          { type: 'edge', action: 'add', source: 5, target: 6 },
+          { type: 'edge', action: 'add', source: 5, target: 14 },
+          { type: 'color', nodeId: 14, newGroup: 1 },
+          { type: 'edge', action: 'add', source: 6, target: 7 },
+          { type: 'edge', action: 'add', source: 16, target: 7 },
+          { type: 'edge', action: 'add', source: 14, target: 6 },
+          { type: 'edge', action: 'add', source: 15, target: 7 },
+          { type: 'color', nodeId: 7, newGroup: 2 }
+      ];
 
-        function App() {
-            const [step, setStep] = React.useState(0);
-            const [nodeGroups, setNodeGroups] = React.useState(initialGroups);
-            const [activeLinks, setActiveLinks] = React.useState([]);
-            const [flashingNode, setFlashingNode] = React.useState(null);
-            const [flashCount, setFlashCount] = React.useState(0);
-            const [isPlaying, setIsPlaying] = React.useState(true);
-            const [isSoundEnabled, setIsSoundEnabled] = React.useState(false);
-            const intervalRef = React.useRef(null);
-            const flashIntervalRef = React.useRef(null);
+      function App() {
+          const [step, setStep] = React.useState(0);
+          const [nodeGroups, setNodeGroups] = React.useState(initialGroups);
+          const [activeLinks, setActiveLinks] = React.useState([]);
+          const [flashingNode, setFlashingNode] = React.useState(null);
+          const [flashCount, setFlashCount] = React.useState(0);
+          const [isPlaying, setIsPlaying] = React.useState(true);
+          const [isSoundEnabled, setIsSoundEnabled] = React.useState(false);
+          const intervalRef = React.useRef(null);
+          const flashIntervalRef = React.useRef(null);
 
-            const handleFlash = (nodeId, oldGroup, newGroup) => {
-                setFlashingNode(nodeId);
-                setFlashCount(0);
-                
-                if (flashIntervalRef.current) {
-                    clearInterval(flashIntervalRef.current);
-                }
-                
-                flashIntervalRef.current = setInterval(() => {
-                    setFlashCount(count => {
-                        if (count >= 5) {
-                            clearInterval(flashIntervalRef.current);
-                            setFlashingNode(null);
-                            return count;
-                        }
-                        return count + 1;
-                    });
-                }, 100);
-            };
+          // Recompute network state up to the target step
+          const recomputeStateForStep = (targetStep) => {
+              const newNodeGroups = [...initialGroups];
+              const newActiveLinks = [];
+              for (let i = 0; i < targetStep; i++) {
+                  const change = changes[i];
+                  if (change.type === 'color') {
+                      newNodeGroups[change.nodeId - 1] = change.newGroup;
+                  } else if (change.type === 'edge' && change.action === 'add') {
+                      newActiveLinks.push({
+                          source: change.source,
+                          target: change.target,
+                          key: `${change.source}-${change.target}-${i}`,
+                          progress: 1
+                      });
+                  }
+              }
+              setNodeGroups(newNodeGroups);
+              setActiveLinks(newActiveLinks);
+              setStep(targetStep);
+          };
 
-            const handleStep = () => {
-                if (step < changes.length) {
-                    const change = changes[step];
-                    
-                    if (change.type === 'color') {
-                        handleFlash(change.nodeId, nodeGroups[change.nodeId - 1], change.newGroup);
-                        setTimeout(() => {
-                            setNodeGroups(prev => {
-                                const next = [...prev];
-                                next[change.nodeId - 1] = change.newGroup;
-                                return next;
-                            });
-                        }, 600);
-                        if (isSoundEnabled) {
-                            playDing();
-                        }
-                    } else if (change.type === 'edge') {
-                        if (change.action === 'add') {
-                            const sourceNode = fixedNodes[change.source - 1];
-                            const targetNode = fixedNodes[change.target - 1];
-                            setActiveLinks(prev => [...prev, {
-                                source: change.source,
-                                target: change.target,
-                                key: `${change.source}-${change.target}-${Date.now()}`,
-                                progress: 0
-                            }]);
-                            
-                            const startTime = Date.now();
-                            const duration = 450;
-                            
-                            const animate = () => {
-                                const now = Date.now();
-                                const elapsed = now - startTime;
-                                const progress = Math.min(elapsed / duration, 1);
-                                
-                                setActiveLinks(prev => prev.map(link => 
-                                    link.source === change.source && link.target === change.target
-                                        ? { ...link, progress }
-                                        : link
-                                ));
-                                
-                                if (progress < 1) {
-                                    requestAnimationFrame(animate);
-                                }
-                            };
-                            
-                            requestAnimationFrame(animate);
-                        }
-                    }
-                    setStep(prev => prev + 1);
-                } else {
-      setIsPlaying(false);
-    }
-            };
+          const handleSliderChange = (e) => {
+              const newStep = parseInt(e.target.value, 10);
+              setIsPlaying(false);
+              if (flashIntervalRef.current) {
+                  clearInterval(flashIntervalRef.current);
+                  setFlashingNode(null);
+              }
+              recomputeStateForStep(newStep);
+          };
 
-            React.useEffect(() => {
-                if (isPlaying) {
-                    intervalRef.current = setInterval(handleStep, 700);
-                    return () => clearInterval(intervalRef.current);
-                }
-            }, [isPlaying, step]);
+          const handleFlash = (nodeId, oldGroup, newGroup) => {
+              setFlashingNode(nodeId);
+              setFlashCount(0);
+              
+              if (flashIntervalRef.current) {
+                  clearInterval(flashIntervalRef.current);
+              }
+              
+              flashIntervalRef.current = setInterval(() => {
+                  setFlashCount(count => {
+                      if (count >= 5) {
+                          clearInterval(flashIntervalRef.current);
+                          setFlashingNode(null);
+                          return count;
+                      }
+                      return count + 1;
+                  });
+              }, 100);
+          };
 
-            const colors = ['#4dabf7', '#ff6b6b'];
-            const nodeRadius = 15;
+          const handleStep = () => {
+              if (step < changes.length) {
+                  const change = changes[step];
+                  
+                  if (change.type === 'color') {
+                      handleFlash(change.nodeId, nodeGroups[change.nodeId - 1], change.newGroup);
+                      setTimeout(() => {
+                          setNodeGroups(prev => {
+                              const next = [...prev];
+                              next[change.nodeId - 1] = change.newGroup;
+                              return next;
+                          });
+                      }, 600);
+                      if (isSoundEnabled) {
+                          playDing();
+                      }
+                  } else if (change.type === 'edge') {
+                      if (change.action === 'add') {
+                          const sourceNode = fixedNodes[change.source - 1];
+                          const targetNode = fixedNodes[change.target - 1];
+                          setActiveLinks(prev => [...prev, {
+                              source: change.source,
+                              target: change.target,
+                              key: `${change.source}-${change.target}-${Date.now()}`,
+                              progress: 0
+                          }]);
+                          
+                          const startTime = Date.now();
+                          const duration = 450;
+                          
+                          const animate = () => {
+                              const now = Date.now();
+                              const elapsed = now - startTime;
+                              const progress = Math.min(elapsed / duration, 1);
+                              
+                              setActiveLinks(prev => prev.map(link => 
+                                  link.source === change.source && link.target === change.target
+                                      ? { ...link, progress }
+                                      : link
+                              ));
+                              
+                              if (progress < 1) {
+                                  requestAnimationFrame(animate);
+                              }
+                          };
+                          
+                          requestAnimationFrame(animate);
+                      }
+                  }
+                  setStep(prev => prev + 1);
+              } else {
+                  setIsPlaying(false);
+              }
+          };
 
-            return (
-                <div className="container">
-                    <div className="title">Rețea socială dinamică</div>
-                    <div className="description">
-                        Nodurile reprezintă persoane (roșu = fumători, albastru = nefumători) iar liniile reprezintă relațiile sociale dintre ele. 
-                        Pe măsură ce rețeaua evoluează, observăm cum comportamentul de fumat se răspândește prin conexiunile sociale existente și cum se formează noi legături între persoanele cu comportamente similare.
-                    </div>
-                    
-                    <div className="controls">
-                        <button onClick={() => setIsPlaying(!isPlaying)}>
-                            {isPlaying ? 'Pauză' : 'Pornește'}
-                        </button>
-                        <button onClick={() => !isPlaying && handleStep()} disabled={isPlaying}>
-                            Următorul Pas
-                        </button>
-                        <button onClick={() => {
-                            setStep(0);
-                            setNodeGroups(initialGroups);
-                            setActiveLinks([]);
-                        }}>
-                            Resetează
-                        </button>
-                        <button onClick={() => setIsSoundEnabled(!isSoundEnabled)}>
-                            {isSoundEnabled ? '🔊 Sunet Pornit' : '🔇 Sunet Oprit'}
-                        </button>
-                    </div>
-                    
-                    <svg 
-                        width="100%" 
-                        height="100%" 
-                        viewBox={`0 0 ${width} ${height}`}
-                        style={{maxHeight: '600px'}}
-                    >
-                        <defs>
-                            <filter id="glow">
-                                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                                <feFlood floodColor="gold" floodOpacity="0.5" result="glowColor"/>
-                                <feComposite in="glowColor" in2="coloredBlur" operator="in" result="softGlow"/>
-                                <feMerge>
-                                    <feMergeNode in="softGlow"/>
-                                    <feMergeNode in="SourceGraphic"/>
-                                </feMerge>
-                            </filter>
-                        </defs>
-                        
-                        <g transform="translate(20, 20)">
-                            <circle cx="10" cy="10" r="6" fill="#4dabf7"/>
-                            <text x="25" y="15" className="text-sm">Nefumători</text>
-                            <circle cx="10" cy="35" r="6" fill="#ff6b6b"/>
-                            <text x="25" y="40" className="text-sm">Fumători</text>
-                        </g>
+          React.useEffect(() => {
+              if (isPlaying) {
+                  intervalRef.current = setInterval(handleStep, 700);
+                  return () => clearInterval(intervalRef.current);
+              }
+          }, [isPlaying, step]);
 
-                        {activeLinks.map((link) => {
-                            const sourceNode = fixedNodes[link.source - 1];
-                            const targetNode = fixedNodes[link.target - 1];
-                            const dx = targetNode.x - sourceNode.x;
-                            const dy = targetNode.y - sourceNode.y;
-                            const currentX = sourceNode.x + dx * (link.progress || 1);
-                            const currentY = sourceNode.y + dy * (link.progress || 1);
-                            
-                            return (
-                                <line
-                                    key={link.key}
-                                    x1={sourceNode.x}
-                                    y1={sourceNode.y}
-                                    x2={currentX}
-                                    y2={currentY}
-                                    stroke="#999"
-                                    strokeWidth="2"
-                                    strokeOpacity="0.6"
-                                />
-                            );
-                        })}
-                        
-                        {fixedNodes.map((node, i) => (
-                            <g
-                                key={node.id}
-                                transform={`translate(${node.x},${node.y})`}
-                            >
-                                <circle
-                                    r={nodeRadius}
-                                    fill={node.id === flashingNode ? 
-                                        (flashCount % 2 === 0 ? colors[0] : colors[1]) : 
-                                        colors[nodeGroups[i] - 1]}
-                                    style={{
-                                        transition: node.id === flashingNode ? 'none' : 'fill 500ms ease-in-out'
-                                    }}
-                                    opacity="0.9"
-                                />
-                                <text
-                                    dy=".35em"
-                                    textAnchor="middle"
-                                    fill="white"
-                                    fontSize="10"
-                                >
-                                    {node.id}
-                                </text>
-                            </g>
-                        ))}
-                    </svg>
-                    <div className="progress">
-                        Pasul {step} din {changes.length}
-                    </div>
-                </div>
-            );
-        }
+          const colors = ['#4dabf7', '#ff6b6b'];
+          const nodeRadius = 15;
 
-        ReactDOM.render(<App />, document.getElementById('root'));
-    </script>
+          return (
+              <div className="container">
+                  <div className="title">Rețea socială dinamică</div>
+                  <div className="description">
+                      Nodurile reprezintă persoane (roșu = fumători, albastru = nefumători) iar liniile reprezintă relațiile sociale dintre ele. 
+                      Pe măsură ce rețeaua evoluează, observăm cum comportamentul de fumat se răspândește prin conexiunile sociale existente și cum se formează noi legături între persoanele cu comportamente similare.
+                  </div>
+                  
+                  <div className="controls">
+                      <button onClick={() => setIsPlaying(!isPlaying)}>
+                          {isPlaying ? 'Stop' : 'Start'}
+                      </button>
+                      <button onClick={() => !isPlaying && handleStep()} disabled={isPlaying}>
+                          Următorul Pas
+                      </button>
+                      <button onClick={() => {
+                          setStep(0);
+                          setNodeGroups(initialGroups);
+                          setActiveLinks([]);
+                      }}>
+                          Resetează
+                      </button>
+                      <button onClick={() => setIsSoundEnabled(!isSoundEnabled)}>
+                          {isSoundEnabled ? '🔊 Sunet Pornit' : '🔇 Sunet Oprit'}
+                      </button>
+                      <div className="slider-container">
+                          <label> Pas {step} / {changes.length}</label>
+                          <input 
+                              type="range" 
+                              min="0" 
+                              max={changes.length} 
+                              value={step} 
+                              onChange={handleSliderChange}
+                          />
+                      </div>
+                  </div>
+                  
+                  <svg 
+                      width="100%" 
+                      height="100%" 
+                      viewBox={`0 0 ${width} ${height}`}
+                      style={{maxHeight: '600px'}}
+                  >
+                      <defs>
+                          <filter id="glow">
+                              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                              <feFlood floodColor="gold" floodOpacity="0.5" result="glowColor"/>
+                              <feComposite in="glowColor" in2="coloredBlur" operator="in" result="softGlow"/>
+                              <feMerge>
+                                  <feMergeNode in="softGlow"/>
+                                  <feMergeNode in="SourceGraphic"/>
+                              </feMerge>
+                          </filter>
+                      </defs>
+                      
+                      <g transform="translate(20, 20)">
+                          <circle cx="10" cy="10" r="6" fill="#4dabf7"/>
+                          <text x="25" y="15" className="text-sm">Nefumători</text>
+                          <circle cx="10" cy="35" r="6" fill="#ff6b6b"/>
+                          <text x="25" y="40" className="text-sm">Fumători</text>
+                      </g>
+
+                      {activeLinks.map((link) => {
+                          const sourceNode = fixedNodes[link.source - 1];
+                          const targetNode = fixedNodes[link.target - 1];
+                          const dx = targetNode.x - sourceNode.x;
+                          const dy = targetNode.y - sourceNode.y;
+                          const currentX = sourceNode.x + dx * (link.progress || 1);
+                          const currentY = sourceNode.y + dy * (link.progress || 1);
+                          
+                          return (
+                              <line
+                                  key={link.key}
+                                  x1={sourceNode.x}
+                                  y1={sourceNode.y}
+                                  x2={currentX}
+                                  y2={currentY}
+                                  stroke="#999"
+                                  strokeWidth="2"
+                                  strokeOpacity="0.6"
+                              />
+                          );
+                      })}
+                      
+                      {fixedNodes.map((node, i) => (
+                          <g key={node.id} transform={`translate(${node.x},${node.y})`}>
+                              <circle
+                                  r={nodeRadius}
+                                  fill={node.id === flashingNode ? (flashCount % 2 === 0 ? colors[0] : colors[1]) : colors[nodeGroups[i] - 1]}
+                                  style={{ transition: node.id === flashingNode ? 'none' : 'fill 500ms ease-in-out' }}
+                                  opacity="0.9"
+                              />
+                              <text dy=".35em" textAnchor="middle" fill="white" fontSize="10">
+                                  {node.id}
+                              </text>
+                          </g>
+                      ))}
+                  </svg>
+              </div>
+          );
+      }
+
+      ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
 </body>
 </html>
