@@ -162,13 +162,15 @@
           { id: 10, x: centerX - 200, y: centerY + 150 },
           { id: 11, x: centerX - 250, y: centerY + 50 },
           { id: 12, x: centerX - 250, y: centerY - 50 },
-          { id: 13, x: centerX, y: centerY - 150 },
-          { id: 14, x: centerX + 150, y: centerY },
-          { id: 15, x: centerX, y: centerY + 150 },
-          { id: 16, x: centerX - 150, y: centerY }
+          { id: 13, x: centerX, y: centerY - 50 },
+          { id: 14, x: centerX + 150, y: centerY - 50 },
+          { id: 15, x: centerX, y: centerY + 130 },
+          { id: 16, x: centerX - 120, y: centerY +24 }
       ];
 
       const initialGroups = fixedNodes.map((_, i) => i < fixedNodes.length / 2 ? 1 : 2);
+      initialGroups[9] = 1;
+      initialGroups[2] = 2;
 
       // Node colors: Group 1 (non-smokers) uses sky blue, Group 2 (smokers) uses warm coral.
       const colors = ['#5bc0de', '#f78154'];
@@ -177,6 +179,7 @@
           { type: 'edge', action: 'add', source: 1, target: 2 },
           { type: 'edge', action: 'add', source: 2, target: 3 },
           { type: 'edge', action: 'add', source: 1, target: 3 },
+          { type: 'color', nodeId: 3, newGroup: 1 },
           { type: 'edge', action: 'add', source: 1, target: 5 },
           { type: 'edge', action: 'add', source: 13, target: 3 },
           { type: 'color', nodeId: 13, newGroup: 1 },
@@ -185,6 +188,7 @@
           { type: 'edge', action: 'add', source: 4, target: 5 },
           { type: 'edge', action: 'add', source: 9, target: 10 },
           { type: 'edge', action: 'add', source: 16, target: 10 },
+          { type: 'color', nodeId: 10, newGroup: 2 },
           { type: 'edge', action: 'add', source: 10, target: 11 },
           { type: 'edge', action: 'add', source: 11, target: 16 },
           { type: 'edge', action: 'add', source: 11, target: 12 },
@@ -195,6 +199,7 @@
           { type: 'color', nodeId: 8, newGroup: 2 },
           { type: 'edge', action: 'add', source: 8, target: 7 },
           { type: 'edge', action: 'add', source: 5, target: 6 },
+          { type: 'edge', action: 'add', source: 13, target: 14 },
           { type: 'edge', action: 'add', source: 5, target: 14 },
           { type: 'color', nodeId: 14, newGroup: 1 },
           { type: 'edge', action: 'add', source: 6, target: 7 },
@@ -343,77 +348,9 @@
 
           return (
               <div className="container">
-                  <div className="title">Rețea socială dinamică</div>
-                  <div className="description">
-                      Acest simulator vizualizează evoluția unei rețele sociale. Nodurile reprezintă persoane, iar culoarea indică comportamentul lor: 
-                      <strong> Nefumători </strong> (culoare: <span style={{color: '#5bc0de'}}>albastru deschis</span>) și 
-                      <strong> Fumători </strong> (culoare: <span style={{color: '#f78154'}}>portocaliu</span>). Liniile indică conexiunile sociale.
-                  </div>
+                  <div className="title">Rețea socială dinamică - demo</div>
                   
-                  <div className="controls">
-                      <div className="control-group">
-                          <button onClick={() => setIsPlaying(!isPlaying)}>
-                              {isPlaying ? 'Stop' : 'Start'}
-                          </button>
-                          <button onClick={() => !isPlaying && handleStep()} disabled={isPlaying}>
-                              Următorul Pas
-                          </button>
-                          <div className="slider-container">
-                              <label>Pas {step} / {changes.length}</label>
-                              <input 
-                                  type="range" 
-                                  min="0" 
-                                  max={changes.length} 
-                                  value={step} 
-                                  onChange={handleSliderChange}
-                              />
-                          </div>
-                          <div className="slider-container">
-                              <label>Viteza simulării: {speed} ms</label>
-                              <input 
-                                  type="range" 
-                                  min="300" 
-                                  max="1300" 
-                                  value={speed} 
-                                  onChange={handleSpeedChange}
-                              />
-                          </div>
-                      </div>
-                      <div className="control-group">
-                          <button onClick={() => {
-                              setStep(0);
-                              setNodeGroups(initialGroups);
-                              setActiveLinks([]);
-                          }}>
-                              Resetează
-                          </button>
-                          <button onClick={() => setIsSoundEnabled(!isSoundEnabled)}>
-                              {isSoundEnabled ? '🔊' : '🔇'}
-                          </button>
-                          <button onClick={toggleHelp}>Ajutor</button>
-                      </div>
-                  </div>
                   
-                  {showHelp && (
-                    <div className="help-modal" onClick={toggleHelp}>
-                      <div className="help-modal-content" onClick={(e) => e.stopPropagation()}>
-                        <h2>Informații despre simulator</h2>
-                        <p>
-                          Acest simulator vizualizează evoluția unei rețele sociale. Fiecare nod reprezintă o persoană, iar culoarea indică comportamentul acesteia:
-                          <br /><br />
-                          • Nefumători: <span style={{color: '#5bc0de'}}>albastru deschis</span>
-                          <br />
-                          • Fumători: <span style={{color: '#f78154'}}>portocaliu</span>
-                        </p>
-                        <p>
-                          Conexiunile dintre noduri sunt reprezentate prin linii, indicând relațiile sociale. Folosiți butoanele pentru a porni/oprire simularea și pentru a trece la pasul următor. Slider-ul "Viteza simulării" vă permite să ajustați intervalul de timp între pași.
-                        </p>
-                        <p>
-                          Apăsați oriunde în afara acestei ferestre pentru a închide ghidul.
-                        </p>
-                      </div>
-                    </div>
-                  )}
                   
                   <svg 
                       width="100%" 
@@ -476,6 +413,72 @@
                           </g>
                       ))}
                   </svg>
+
+                  <div className="controls">
+                      <div className="control-group">
+                          <button onClick={() => setIsPlaying(!isPlaying)}>
+                              {isPlaying ? 'Stop' : 'Start'}
+                          </button>
+                          <button onClick={() => !isPlaying && handleStep()} disabled={isPlaying}>
+                              Următorul Pas
+                          </button>
+                          <div className="slider-container">
+                              <label>Pas {step} / {changes.length}</label>
+                              <input 
+                                  type="range" 
+                                  min="0" 
+                                  max={changes.length} 
+                                  value={step} 
+                                  onChange={handleSliderChange}
+                              />
+                          </div>
+                          <div className="slider-container">
+                              <label>Timpul dintre pași: {speed} ms</label>
+                              <input 
+                                  type="range" 
+                                  min="300" 
+                                  max="1300" 
+                                  value={speed} 
+                                  onChange={handleSpeedChange}
+                              />
+                          </div>
+                      </div>
+                      <div className="control-group">
+                          <button onClick={() => {
+                              setStep(0);
+                              setNodeGroups(initialGroups);
+                              setActiveLinks([]);
+                          }}>
+                              Resetează
+                          </button>
+                          <button onClick={() => setIsSoundEnabled(!isSoundEnabled)}>
+                              {isSoundEnabled ? '🔊' : '🔇'}
+                          </button>
+                          <button onClick={toggleHelp}>Ajutor</button>
+                      </div>
+                  </div>
+                  
+                  {showHelp && (
+                    <div className="help-modal" onClick={toggleHelp}>
+                      <div className="help-modal-content" onClick={(e) => e.stopPropagation()}>
+                        <h2>Informații despre simulator</h2>
+                        <p>
+                          Acest simulator vizualizează evoluția unei rețele sociale. Fiecare nod reprezintă o persoană, iar culoarea indică comportamentul acesteia:
+                          <br /><br />
+                          • Nefumători: <span style={{color: '#5bc0de'}}>albastru deschis</span>
+                          <br />
+                          • Fumători: <span style={{color: '#f78154'}}>portocaliu</span>
+                        </p>
+                        <p>
+                          Conexiunile dintre noduri sunt reprezentate prin linii, indicând relațiile sociale. Folosiți butoanele pentru a porni/oprire simularea și pentru a trece la pasul următor. Slider-ul "Viteza simulării" vă permite să ajustați intervalul de timp între pași.
+                        </p>
+                        <p>
+                          Apăsați oriunde în afara acestei ferestre pentru a închide ghidul.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
               </div>
           );
       }
