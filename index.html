@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <title>Rețea Socială Dinamică</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -12,7 +12,7 @@
       body {
           margin: 0;
           padding: 20px;
-          font-family: 'Roboto', sans-serif;
+          font-family: 'Poppins', sans-serif;
           background: #f0f0f0;
       }
       .container {
@@ -45,20 +45,29 @@
       }
       button {
           padding: 8px 16px;
-          border: none;
-          border-radius: 4px;
-          background: #4dabf7;
-          color: white;
+          border: 0.5px solid rgba(173, 216, 230, 0.25);
+          border-radius: 10px;
+          background-color: rgba(173, 216, 230, 0.25);
+          -webkit-backdrop-filter: blur(4px);
+          backdrop-filter: blur(4px);
+          color: #333;
           cursor: pointer;
           font-size: 14px;
-          font-family: 'Roboto', sans-serif;
+          font-family: 'Poppins', sans-serif;
+          box-shadow: 0 3px 10px 0 rgba(31, 38, 135, 0.37);
+          transition: 1s all ease;
+          z-index: 10;
       }
       button:hover {
-          background: #339af0;
+          background-color: rgba(105, 196, 226, 0.35);
+          box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+          transform: translateY(-1px);
       }
       button:disabled {
-          background: #aaa;
+          background-color: rgba(170, 170, 170, 0.25);
           cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
       }
       .progress {
           margin-top: 10px;
@@ -133,6 +142,10 @@
       ];
 
       const initialGroups = fixedNodes.map((_, i) => i < fixedNodes.length/2 ? 1 : 2);
+
+      // New node colors:
+      // Group 1 (non-smokers) now uses a sky blue and Group 2 (smokers) a warm coral.
+      const colors = ['#5bc0de', '#f78154'];
 
       const changes = [
           { type: 'edge', action: 'add', source: 1, target: 2 },
@@ -290,7 +303,6 @@
               }
           }, [isPlaying, step]);
 
-          const colors = ['#4dabf7', '#ff6b6b'];
           const nodeRadius = 15;
 
           return (
@@ -308,16 +320,7 @@
                       <button onClick={() => !isPlaying && handleStep()} disabled={isPlaying}>
                           Următorul Pas
                       </button>
-                      <button onClick={() => {
-                          setStep(0);
-                          setNodeGroups(initialGroups);
-                          setActiveLinks([]);
-                      }}>
-                          Resetează
-                      </button>
-                      <button onClick={() => setIsSoundEnabled(!isSoundEnabled)}>
-                          {isSoundEnabled ? '🔊 Sunet Pornit' : '🔇 Sunet Oprit'}
-                      </button>
+                      
                       <div className="slider-container">
                           <label> Pas {step} / {changes.length}</label>
                           <input 
@@ -327,7 +330,17 @@
                               value={step} 
                               onChange={handleSliderChange}
                           />
-                      </div>
+                        </div>
+                        <button onClick={() => {
+                          setStep(0);
+                          setNodeGroups(initialGroups);
+                          setActiveLinks([]);
+                      }}>
+                          Resetează
+                      </button>
+                        <button onClick={() => setIsSoundEnabled(!isSoundEnabled)}>
+                          {isSoundEnabled ? '🔊' : '🔇'}
+                        </button>
                   </div>
                   
                   <svg 
@@ -349,9 +362,9 @@
                       </defs>
                       
                       <g transform="translate(20, 20)">
-                          <circle cx="10" cy="10" r="6" fill="#4dabf7"/>
+                          <circle cx="10" cy="10" r="6" fill="#5bc0de"/>
                           <text x="25" y="15" className="text-sm">Nefumători</text>
-                          <circle cx="10" cy="35" r="6" fill="#ff6b6b"/>
+                          <circle cx="10" cy="35" r="6" fill="#f78154"/>
                           <text x="25" y="40" className="text-sm">Fumători</text>
                       </g>
 
