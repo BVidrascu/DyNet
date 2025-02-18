@@ -165,7 +165,7 @@
           { id: 13, x: centerX, y: centerY - 50 },
           { id: 14, x: centerX + 150, y: centerY - 50 },
           { id: 15, x: centerX, y: centerY + 130 },
-          { id: 16, x: centerX - 120, y: centerY +24 }
+          { id: 16, x: centerX - 120, y: centerY + 24 }
       ];
 
       const initialGroups = fixedNodes.map((_, i) => i < fixedNodes.length / 2 ? 1 : 2);
@@ -206,7 +206,10 @@
           { type: 'edge', action: 'add', source: 16, target: 7 },
           { type: 'edge', action: 'add', source: 14, target: 6 },
           { type: 'edge', action: 'add', source: 15, target: 7 },
-          { type: 'color', nodeId: 7, newGroup: 2 }
+          { type: 'color', nodeId: 7, newGroup: 2 },
+          { type: 'edge', action: 'delete', source: 6, target: 7 }
+
+          // Last step: delete the first edge added (edge from 1 to 2)
       ];
 
       function App() {
@@ -222,21 +225,54 @@
           const intervalRef = React.useRef(null);
           const flashIntervalRef = React.useRef(null);
 
-          // Recompute network state up to the target step
+          // Function to animate deletion: shakes and fades out the edge.
+          const animateLinkDeletion = (source, target) => {
+              const deletionDuration = 500; // in ms
+              const startTime = Date.now();
+              const tick = () => {
+                  const now = Date.now();
+                  const elapsed = now - startTime;
+                  const progress = Math.min(elapsed / deletionDuration, 1);
+                  setActiveLinks(prevLinks => {
+                      const updated = prevLinks.map(link => {
+                          if (link.deleting && link.source === source && link.target === target) {
+                              if (progress >= 1) return null; // remove edge after animation
+                              // Shake effect: amplitude decays over time
+                              const shake = 5 * Math.sin(progress * 10 * Math.PI) * (1 - progress);
+                              return { ...link, deletionProgress: progress, shakeOffset: shake };
+                          }
+                          return link;
+                      }).filter(link => link !== null);
+                      return updated;
+                  });
+                  if (progress < 1) {
+                      requestAnimationFrame(tick);
+                  }
+              };
+              requestAnimationFrame(tick);
+          };
+
+          // Recompute network state up to the target step, including deletion events.
           const recomputeStateForStep = (targetStep) => {
               const newNodeGroups = [...initialGroups];
-              const newActiveLinks = [];
+              let newActiveLinks = [];
               for (let i = 0; i < targetStep; i++) {
                   const change = changes[i];
                   if (change.type === 'color') {
                       newNodeGroups[change.nodeId - 1] = change.newGroup;
-                  } else if (change.type === 'edge' && change.action === 'add') {
-                      newActiveLinks.push({
-                          source: change.source,
-                          target: change.target,
-                          key: `${change.source}-${change.target}-${i}`,
-                          progress: 1
-                      });
+                  } else if (change.type === 'edge') {
+                      if (change.action === 'add') {
+                          newActiveLinks.push({
+                              source: change.source,
+                              target: change.target,
+                              key: `${change.source}-${change.target}-${i}`,
+                              progress: 1
+                          });
+                      } else if (change.action === 'delete') {
+                          newActiveLinks = newActiveLinks.filter(link =>
+                              !(link.source === change.source && link.target === change.target)
+                          );
+                      }
                   }
               }
               setNodeGroups(newNodeGroups);
@@ -296,8 +332,6 @@
                       }
                   } else if (change.type === 'edge') {
                       if (change.action === 'add') {
-                          const sourceNode = fixedNodes[change.source - 1];
-                          const targetNode = fixedNodes[change.target - 1];
                           setActiveLinks(prev => [...prev, {
                               source: change.source,
                               target: change.target,
@@ -325,6 +359,15 @@
                           };
                           
                           requestAnimationFrame(animate);
+                      } else if (change.action === 'delete') {
+                          // Mark the matching edge as deleting and animate it
+                          setActiveLinks(prev => prev.map(link => {
+                              if (link.source === change.source && link.target === change.target) {
+                                  return { ...link, deleting: true, deletionProgress: 0, shakeOffset: 0 };
+                              }
+                              return link;
+                          }));
+                          animateLinkDeletion(change.source, change.target);
                       }
                   }
                   setStep(prev => prev + 1);
@@ -349,9 +392,6 @@
           return (
               <div className="container">
                   <div className="title">Rețea socială dinamică - demo</div>
-                  
-                  
-                  
                   <svg 
                       width="100%" 
                       height="100%" 
@@ -384,6 +424,8 @@
                           const dy = targetNode.y - sourceNode.y;
                           const currentX = sourceNode.x + dx * (link.progress || 1);
                           const currentY = sourceNode.y + dy * (link.progress || 1);
+                          const opacity = link.deleting ? (0.6 * (1 - (link.deletionProgress || 0))) : 0.6;
+                          const transform = link.deleting ? `translate(${link.shakeOffset || 0},0)` : '';
                           
                           return (
                               <line
@@ -394,7 +436,8 @@
                                   y2={currentY}
                                   stroke="#999"
                                   strokeWidth="2"
-                                  strokeOpacity="0.6"
+                                  strokeOpacity={opacity}
+                                  transform={transform}
                               />
                           );
                       })}
