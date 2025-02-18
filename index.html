@@ -2,6 +2,7 @@
 <html lang="ro">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <title>Rețea Socială Dinamică</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
@@ -43,6 +44,13 @@
           justify-content: center;
           align-items: center;
       }
+      .control-group {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          justify-content: center;
+          align-items: center;
+      }
       button {
           padding: 8px 16px;
           border: 0.5px solid rgba(173, 216, 230, 0.25);
@@ -69,11 +77,6 @@
           transform: none;
           box-shadow: none;
       }
-      .progress {
-          margin-top: 10px;
-          text-align: center;
-          color: #666;
-      }
       .slider-container {
           display: flex;
           flex-direction: column;
@@ -92,6 +95,30 @@
           stroke-dasharray: 1000;
           stroke-dashoffset: 1000;
           animation: drawEdge 0.5s ease-out forwards;
+      }
+      /* Help modal styles */
+      .help-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0,0,0,0.6);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 100;
+      }
+      .help-modal-content {
+          background: white;
+          padding: 20px;
+          border-radius: 8px;
+          max-width: 600px;
+          width: 90%;
+          font-family: 'Poppins', sans-serif;
+      }
+      .help-modal-content h2 {
+          margin-top: 0;
       }
   </style>
 </head>
@@ -141,10 +168,9 @@
           { id: 16, x: centerX - 150, y: centerY }
       ];
 
-      const initialGroups = fixedNodes.map((_, i) => i < fixedNodes.length/2 ? 1 : 2);
+      const initialGroups = fixedNodes.map((_, i) => i < fixedNodes.length / 2 ? 1 : 2);
 
-      // New node colors:
-      // Group 1 (non-smokers) now uses a sky blue and Group 2 (smokers) a warm coral.
+      // Node colors: Group 1 (non-smokers) uses sky blue, Group 2 (smokers) uses warm coral.
       const colors = ['#5bc0de', '#f78154'];
 
       const changes = [
@@ -186,6 +212,8 @@
           const [flashCount, setFlashCount] = React.useState(0);
           const [isPlaying, setIsPlaying] = React.useState(true);
           const [isSoundEnabled, setIsSoundEnabled] = React.useState(false);
+          const [speed, setSpeed] = React.useState(700);
+          const [showHelp, setShowHelp] = React.useState(false);
           const intervalRef = React.useRef(null);
           const flashIntervalRef = React.useRef(null);
 
@@ -219,6 +247,10 @@
                   setFlashingNode(null);
               }
               recomputeStateForStep(newStep);
+          };
+
+          const handleSpeedChange = (e) => {
+              setSpeed(parseInt(e.target.value, 10));
           };
 
           const handleFlash = (nodeId, oldGroup, newGroup) => {
@@ -298,10 +330,14 @@
 
           React.useEffect(() => {
               if (isPlaying) {
-                  intervalRef.current = setInterval(handleStep, 700);
+                  intervalRef.current = setInterval(handleStep, speed);
                   return () => clearInterval(intervalRef.current);
               }
-          }, [isPlaying, step]);
+          }, [isPlaying, step, speed]);
+
+          const toggleHelp = () => {
+              setShowHelp(!showHelp);
+          };
 
           const nodeRadius = 15;
 
@@ -309,39 +345,75 @@
               <div className="container">
                   <div className="title">Rețea socială dinamică</div>
                   <div className="description">
-                      Nodurile reprezintă persoane (roșu = fumători, albastru = nefumători) iar liniile reprezintă relațiile sociale dintre ele. 
-                      Pe măsură ce rețeaua evoluează, observăm cum comportamentul de fumat se răspândește prin conexiunile sociale existente și cum se formează noi legături între persoanele cu comportamente similare.
+                      Acest simulator vizualizează evoluția unei rețele sociale. Nodurile reprezintă persoane, iar culoarea indică comportamentul lor: 
+                      <strong> Nefumători </strong> (culoare: <span style={{color: '#5bc0de'}}>albastru deschis</span>) și 
+                      <strong> Fumători </strong> (culoare: <span style={{color: '#f78154'}}>portocaliu</span>). Liniile indică conexiunile sociale.
                   </div>
                   
                   <div className="controls">
-                      <button onClick={() => setIsPlaying(!isPlaying)}>
-                          {isPlaying ? 'Stop' : 'Start'}
-                      </button>
-                      <button onClick={() => !isPlaying && handleStep()} disabled={isPlaying}>
-                          Următorul Pas
-                      </button>
-                      
-                      <div className="slider-container">
-                          <label> Pas {step} / {changes.length}</label>
-                          <input 
-                              type="range" 
-                              min="0" 
-                              max={changes.length} 
-                              value={step} 
-                              onChange={handleSliderChange}
-                          />
-                        </div>
-                        <button onClick={() => {
-                          setStep(0);
-                          setNodeGroups(initialGroups);
-                          setActiveLinks([]);
-                      }}>
-                          Resetează
-                      </button>
-                        <button onClick={() => setIsSoundEnabled(!isSoundEnabled)}>
-                          {isSoundEnabled ? '🔊' : '🔇'}
-                        </button>
+                      <div className="control-group">
+                          <button onClick={() => setIsPlaying(!isPlaying)}>
+                              {isPlaying ? 'Stop' : 'Start'}
+                          </button>
+                          <button onClick={() => !isPlaying && handleStep()} disabled={isPlaying}>
+                              Următorul Pas
+                          </button>
+                          <div className="slider-container">
+                              <label>Pas {step} / {changes.length}</label>
+                              <input 
+                                  type="range" 
+                                  min="0" 
+                                  max={changes.length} 
+                                  value={step} 
+                                  onChange={handleSliderChange}
+                              />
+                          </div>
+                          <div className="slider-container">
+                              <label>Viteza simulării: {speed} ms</label>
+                              <input 
+                                  type="range" 
+                                  min="300" 
+                                  max="1300" 
+                                  value={speed} 
+                                  onChange={handleSpeedChange}
+                              />
+                          </div>
+                      </div>
+                      <div className="control-group">
+                          <button onClick={() => {
+                              setStep(0);
+                              setNodeGroups(initialGroups);
+                              setActiveLinks([]);
+                          }}>
+                              Resetează
+                          </button>
+                          <button onClick={() => setIsSoundEnabled(!isSoundEnabled)}>
+                              {isSoundEnabled ? '🔊' : '🔇'}
+                          </button>
+                          <button onClick={toggleHelp}>Ajutor</button>
+                      </div>
                   </div>
+                  
+                  {showHelp && (
+                    <div className="help-modal" onClick={toggleHelp}>
+                      <div className="help-modal-content" onClick={(e) => e.stopPropagation()}>
+                        <h2>Informații despre simulator</h2>
+                        <p>
+                          Acest simulator vizualizează evoluția unei rețele sociale. Fiecare nod reprezintă o persoană, iar culoarea indică comportamentul acesteia:
+                          <br /><br />
+                          • Nefumători: <span style={{color: '#5bc0de'}}>albastru deschis</span>
+                          <br />
+                          • Fumători: <span style={{color: '#f78154'}}>portocaliu</span>
+                        </p>
+                        <p>
+                          Conexiunile dintre noduri sunt reprezentate prin linii, indicând relațiile sociale. Folosiți butoanele pentru a porni/oprire simularea și pentru a trece la pasul următor. Slider-ul "Viteza simulării" vă permite să ajustați intervalul de timp între pași.
+                        </p>
+                        <p>
+                          Apăsați oriunde în afara acestei ferestre pentru a închide ghidul.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   
                   <svg 
                       width="100%" 
