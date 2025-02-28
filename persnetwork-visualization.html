@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard: Diffusion with Step-by-Step Animations</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <style>
+      body {
+          margin: 0;
+          padding: 20px;
+          font-family: 'Poppins', sans-serif;
+          background: #f0f0f0;
+      }
+      .container {
+          max-width: 1200px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 10px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          padding: 20px;
+      }
+      .title {
+          text-align: center;
+          margin-bottom: 1rem;
+          font-size: 1.5rem;
+          font-weight: bold;
+      }
+      .description {
+          text-align: center;
+          color: #666;
+          margin-bottom: 1.5rem;
+          font-size: 1rem;
+      }
+      .grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 20px;
+      }
+      .mini-network {
+          border: 1px solid #ddd;
+          border-radius: 10px;
+          padding: 10px;
+          background: #fafafa;
+      }
+      .mini-network h4 {
+          margin: 0 0 5px 0;
+          text-align: center;
+          font-size: 1.1rem;
+      }
+      .mini-network svg {
+          display: block;
+          margin: 0 auto;
+          background: #fff;
+          border-radius: 5px;
+      }
+      .controls {
+          text-align: center;
+          margin-top: 10px;
+      }
+      button {
+          padding: 8px 16px;
+          border: none;
+          border-radius: 10px;
+          background-color: #ADD8E6;
+          cursor: pointer;
+          font-size: 14px;
+          margin: 0 5px;
+      }
+      button:hover {
+          background-color: #69C4E2;
+      }
+      /* Shake animation for edges being deleted */
+      @keyframes shake {
+          0% { transform: translateX(0); }
+          25% { transform: translateX(-3px); }
+          50% { transform: translateX(3px); }
+          75% { transform: translateX(-3px); }
+          100% { transform: translateX(0); }
+      }
+      .edge.deleting {
+          animation: shake 0.5s ease-in-out;
+          opacity: 0;
+      }
+      /* Fade-in with scale for new edges */
+      @keyframes fadeInScale {
+          0% { opacity: 0; transform: scale(0.8); }
+          100% { opacity: 1; transform: scale(1); }
+      }
+      .edge.entering {
+          animation: fadeInScale 0.5s ease-in-out;
+      }
+      /* New colorFlash animation for nodes changing color */
+      @keyframes colorFlash {
+          0% { fill: #d3d3d3; }
+          20% { fill: #FF00FF; }
+          40% { fill: #d3d3d3; }
+          60% { fill: #FF00FF; }
+          80% { fill: #d3d3d3; }
+          100% { fill: #FF00FF; }
+      }
+      .node.flashing {
+          animation: colorFlash 1s ease-in-out;
+      }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+      function MiniNetwork(props) {
+          const width = 300;
+          const height = 300;
+          const numNodes = 25;
+          const [nodes, setNodes] = React.useState([]);
+          const [edges, setEdges] = React.useState([]);
+          const [wave, setWave] = React.useState(1);
+          const [autoPlaying, setAutoPlaying] = React.useState(false);
+          const autoIntervalRef = React.useRef(null);
+          const initialConfigRef = React.useRef(null);
+  
+          const generateNodes = () => {
+              const newNodes = [];
+              const margin = 20;
+              const minDistance = 20;
+              while (newNodes.length < numNodes) {
+                  const x = margin + Math.random() * (width - 2 * margin);
+                  const y = margin + Math.random() * (height - 2 * margin);
+                  if (!newNodes.some(n => Math.hypot(n.x - x, n.y - y) < minDistance)) {
+                      newNodes.push({
+                          id: newNodes.length + 1,
+                          x,
+                          y,
+                          group: Math.random() < 0.4 ? 2 : 1
+                      });
+                  }
+              }
+              return newNodes;
+          };
+  
+          const generateEdges = (nodes) => {
+              const newEdges = [];
+              for (let i = 0; i < nodes.length; i++) {
+                  const current = nodes[i];
+                  const neighbors = nodes.slice(i + 1).map(n => ({
+                      id: n.id,
+                      d: Math.hypot(current.x - n.x, current.y - n.y)
+                  }));
+                  neighbors.sort((a, b) => a.d - b.d);
+                  const k = Math.min(3, neighbors.length);
+                  for (let j = 0; j < k; j++) {
+                      newEdges.push({ source: current.id, target: neighbors[j].id });
+                  }
+              }
+              const brokerEdges = 2;
+              for (let i = 0; i < brokerEdges; i++) {
+                  let a = nodes[Math.floor(Math.random() * nodes.length)];
+                  let b = nodes[Math.floor(Math.random() * nodes.length)];
+                  while (a.id === b.id || newEdges.some(e => (e.source === a.id && e.target === b.id) || (e.source === b.id && e.target === a.id))) {
+                      b = nodes[Math.floor(Math.random() * nodes.length)];
+                  }
+                  newEdges.push({ source: a.id, target: b.id });
+              }
+              return newEdges;
+          };
+  
+          React.useEffect(() => {
+              const initialNodes = generateNodes();
+              const initialEdges = generateEdges(initialNodes);
+              setNodes(initialNodes);
+              setEdges(initialEdges);
+              initialConfigRef.current = { nodes: initialNodes, edges: initialEdges };
+          }, []);
+  
+          // Stop autoplay if wave reaches 4
+          React.useEffect(() => {
+              if (wave >= 4 && autoPlaying) {
+                  clearInterval(autoIntervalRef.current);
+                  setAutoPlaying(false);
+              }
+          }, [wave, autoPlaying]);
+  
+          const nextWave = () => {
+              if (wave >= 4) return;
+  
+              // Step 1: Remove 0–2 edges with shake animation.
+              const removeCount = Math.floor(Math.random() * 3);
+              setEdges(prevEdges => {
+                  let updated = prevEdges.map(edge => ({ ...edge }));
+                  for (let i = 0; i < removeCount && updated.length > 0; i++) {
+                      const idx = Math.floor(Math.random() * updated.length);
+                      updated[idx] = { ...updated[idx], deleting: true };
+                  }
+                  return updated;
+              });
+              setTimeout(() => {
+                  setEdges(prevEdges => prevEdges.filter(edge => !edge.deleting));
+  
+                  // Step 2: Add 0–2 new edges with fade-in/scale animation.
+                  const addCount = Math.floor(Math.random() * 3);
+                  setEdges(prevEdges => {
+                      let updated = [...prevEdges];
+                      for (let i = 0; i < addCount; i++) {
+                          let nodeA = nodes[Math.floor(Math.random() * nodes.length)];
+                          let nodeB = nodes[Math.floor(Math.random() * nodes.length)];
+                          let attempts = 0;
+                          while ((nodeA.id === nodeB.id ||
+                              updated.some(e => (e.source === nodeA.id && e.target === nodeB.id) ||
+                                                 (e.source === nodeB.id && e.target === nodeA.id))) &&
+                             attempts < 100) {
+                              nodeA = nodes[Math.floor(Math.random() * nodes.length)];
+                              nodeB = nodes[Math.floor(Math.random() * nodes.length)];
+                              attempts++;
+                          }
+                          if (nodeA.id !== nodeB.id &&
+                              !updated.some(e => (e.source === nodeA.id && e.target === nodeB.id) ||
+                                                 (e.source === nodeB.id && e.target === nodeA.id))) {
+                              updated.push({ source: nodeA.id, target: nodeB.id, entering: true });
+                          }
+                      }
+                      return updated;
+                  });
+                  setTimeout(() => {
+                      setEdges(prevEdges => prevEdges.map(edge => edge.entering ? { ...edge, entering: false } : edge));
+  
+                      // Step 3: Node color changes with flashing animation.
+                      const convertCount = Math.floor(Math.random() * 3) + 1;
+                      setNodes(prevNodes => {
+                          let updated = [...prevNodes];
+                          const candidates = updated.filter(node => {
+                              if (node.group !== 1) return false;
+                              const neighborEdges = edges.filter(edge => edge.source === node.id || edge.target === node.id);
+                              const group2Count = neighborEdges.reduce((count, edge) => {
+                                  const neighborId = edge.source === node.id ? edge.target : edge.source;
+                                  const neighbor = updated.find(n => n.id === neighborId);
+                                  return count + (neighbor && neighbor.group === 2 ? 1 : 0);
+                              }, 0);
+                              return group2Count > 0;
+                          });
+                          for (let i = 0; i < convertCount && candidates.length > 0; i++) {
+                              const idx = Math.floor(Math.random() * candidates.length);
+                              const candidate = candidates[idx];
+                              updated = updated.map(n => n.id === candidate.id ? { ...n, group: 2, flashing: true } : n);
+                              setTimeout(() => {
+                                  setNodes(current => current.map(n => n.id === candidate.id ? { ...n, flashing: false } : n));
+                              }, 1000);
+                              candidates.splice(idx, 1);
+                          }
+                          return updated;
+                      });
+  
+                      setWave(prev => prev + 1);
+                  }, 500);
+              }, 500);
+          };
+  
+          const toggleAutoPlay = () => {
+              if (autoPlaying) {
+                  clearInterval(autoIntervalRef.current);
+                  setAutoPlaying(false);
+              } else {
+                  if (wave >= 4) return;
+                  autoIntervalRef.current = setInterval(() => {
+                      nextWave();
+                  }, 3000);
+                  setAutoPlaying(true);
+              }
+          };
+  
+          const resetNetwork = () => {
+              if (initialConfigRef.current) {
+                  setNodes(initialConfigRef.current.nodes);
+                  setEdges(initialConfigRef.current.edges);
+                  setWave(1);
+              }
+              if (autoPlaying) {
+                  clearInterval(autoIntervalRef.current);
+                  setAutoPlaying(false);
+              }
+          };
+  
+          return (
+              <div className="mini-network">
+                  <h4>{props.title}</h4>
+                  <svg width={width} height={height}>
+                      <text x="10" y="20" fontSize="16" fill="black">Valul {wave}</text>
+                      {edges.map((edge, index) => {
+                          const source = nodes.find(n => n.id === edge.source);
+                          const target = nodes.find(n => n.id === edge.target);
+                          if (!source || !target) return null;
+                          let className = "edge";
+                          if (edge.deleting) className += " deleting";
+                          else if (edge.entering) className += " entering";
+                          return (
+                              <line
+                                  key={index}
+                                  x1={source.x}
+                                  y1={source.y}
+                                  x2={target.x}
+                                  y2={target.y}
+                                  stroke="#888"
+                                  strokeWidth="1"
+                                  className={className}
+                              />
+                          );
+                      })}
+                      {nodes.map(node => {
+                          let className = "node";
+                          if (node.flashing) className += " flashing";
+                          return (
+                              <circle
+                                  key={node.id}
+                                  cx={node.x}
+                                  cy={node.y}
+                                  r={6}
+                                  fill={node.group === 1 ? "#d3d3d3" : "#FF00FF"}
+                                  className={className}
+                                  style={{ transition: 'fill 0.5s ease-in-out' }}
+                              />
+                          );
+                      })}
+                  </svg>
+                  <div className="controls">
+                      <button onClick={nextWave} disabled={wave >= 4}>Next Wave</button>
+                      <button onClick={toggleAutoPlay}>{autoPlaying ? 'Stop Autoplay' : 'Start Autoplay'}</button>
+                      <button onClick={resetNetwork}>Reset</button>
+                  </div>
+              </div>
+          );
+      }
+  
+      function Dashboard() {
+          const networkCount = 9;
+          const networks = [];
+          for (let i = 0; i < networkCount; i++) {
+              networks.push(<MiniNetwork key={i} title={`Rețeaua respondentului ${i + 1}`} />);
+          }
+          return (
+              <div className="container">
+                  <div className="title">Dashboard: Personal Networks</div>
+                  <div className="description">
+                      Each 25-node network starts with 40% magenta. In each wave ("Valul 1" to "Valul 4"),
+                      edges are removed (with a shake), new edges are added (with a fade‑in/scale), and nodes change color
+                      (flashing between colors) – all sequentially. Autoplay stops automatically when wave 4 is reached.
+                      Click Reset to restore the initial configuration.
+                  </div>
+                  <div className="grid">
+                      {networks}
+                  </div>
+              </div>
+          );
+      }
+  
+      ReactDOM.render(<Dashboard />, document.getElementById('root'));
+  </script>
+</body>
+</html>
