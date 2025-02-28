@@ -29,4 +29,4 @@ For further details, consult the help section on the website.
 
 # DyNet complex network
 
-A more complex variant of the dynamic network. Edge and node generation is handled differently. It makes more sense for larger networks that just tell one big story.
+A more complex variant of the dynamic network you can find [here](https://bogdanvidrascu.com/DyNet/large_evo_network.html). Edge and node generation is handled differently. It makes more sense for larger networks that just tell one big story.
