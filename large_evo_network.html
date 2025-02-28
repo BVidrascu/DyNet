@@ -164,7 +164,7 @@
 
       // Generate 100 nodes with a random but circular distribution
       const fixedNodes = [];
-      const numNodes = 100;
+      const numNodes = 200;
       
       // Helper function to check if a position is too close to existing nodes
       const isTooClose = (x, y, minDistance = 30) => {
@@ -257,16 +257,16 @@
           // Create a gradient of probabilities based on position
           // Left half (angle between π/2 and 3π/2) has more non-smokers
           if (angle > Math.PI/2 && angle < 3*Math.PI/2) {
-              return Math.random() < 0.75 ? 1 : 2; // 75% non-smokers on left
+              return Math.random() < 0.80 ? 1 : 2; // 75% non-smokers on left
           } 
           // Right half has more smokers
           else {
-              return Math.random() < 0.25 ? 1 : 2; // 25% non-smokers on right
+              return Math.random() < 0.40 ? 1 : 2; // % non-smokers on right
           }
       });
 
       // Node colors: Group 1 (non-smokers) uses light gray, Group 2 (smokers) uses dark red.
-      const colors = ['#d3d3d3', '#8b0000'];
+      const colors = ['#d3d3d3', '#FF00FF'];
 
       // Generate a sequence of changes to the network
       // We'll generate these programmatically to handle the larger network
@@ -830,7 +830,7 @@
                       <g transform="translate(20, 20)">
                           <circle cx="10" cy="10" r="6" fill="#d3d3d3"/>
                           <text x="25" y="15" className="text-sm">Nefumători</text>
-                          <circle cx="10" cy="35" r="6" fill="#8b0000"/>
+                          <circle cx="10" cy="35" r="6" fill="#FF00FF"/>
                           <text x="25" y="40" className="text-sm">Fumători</text>
                       </g>
 
@@ -895,7 +895,7 @@
                               <input 
                                   type="range" 
                                   min="15" 
-                                  max="500" 
+                                  max="300" 
                                   value={speed} 
                                   onChange={handleSpeedChange}
                               />
