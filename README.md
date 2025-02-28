@@ -30,3 +30,7 @@ For further details, consult the help section on the website.
 # DyNet complex network
 
 A more complex variant of the dynamic network you can find [here](https://bogdanvidrascu.com/DyNet/large_evo_network.html). Edge and node generation is handled differently. It makes more sense for larger networks that just tell one big story, which in this case is diffusion of bad health behavior. It is quite easy to change to different behaviours.
+
+# PDyNet
+
+A dashboard of a series of personal networks that sequentially change from wave to wave you can find [here](https://bogdanvidrascu.com/DyNet/persnetwork-visualization.html).
