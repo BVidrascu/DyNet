@@ -26,3 +26,7 @@ Each animation corresponds to a single event step. The framework supports:
 - Adjusting the speed of the animations via a slider.
 
 For further details, consult the help section on the website.
+
+# DyNet complex network
+
+A more complex variant of the dynamic network. Edge and node generation is handled differently. It makes more sense for larger networks that just tell one big story.
