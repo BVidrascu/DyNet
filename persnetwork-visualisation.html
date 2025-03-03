@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rețele personale de fumat</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <style>
+      body {
+          margin: 0;
+          padding: 20px;
+          font-family: 'Poppins', sans-serif;
+          background: #f0f0f0;
+      }
+      .container {
+          max-width: 1200px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 10px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          padding: 20px;
+      }
+      .title {
+          text-align: center;
+          margin-bottom: 1rem;
+          font-size: 1.5rem;
+          font-weight: bold;
+      }
+      .description {
+          text-align: center;
+          color: #666;
+          margin-bottom: 1.5rem;
+          font-size: 1rem;
+      }
+      .global-controls {
+          text-align: center;
+          margin-bottom: 20px;
+      }
+      .global-controls button {
+          padding: 10px 20px;
+          font-size: 16px;
+          background-color: #69C4E2;
+      }
+      .speed-control {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          margin-top: 10px;
+      }
+      .speed-control label {
+          font-size: 14px;
+          color: #555;
+      }
+      .speed-slider {
+          width: 200px;
+      }
+      .grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 20px;
+      }
+      .mini-network {
+          border: 1px solid #ddd;
+          border-radius: 10px;
+          padding: 10px;
+          background: #fafafa;
+      }
+      .mini-network h4 {
+          margin: 0 0 5px 0;
+          text-align: center;
+          font-size: 1.1rem;
+      }
+      .mini-network svg {
+          display: block;
+          margin: 0 auto;
+          background: #fafafa;
+          border-radius: 5px;
+      }
+      .controls {
+          text-align: center;
+          margin-top: 10px;
+      }
+      button {
+          padding: 8px 16px;
+          border: none;
+          border-radius: 10px;
+          background-color: #ADD8E6;
+          cursor: pointer;
+          font-size: 14px;
+          margin: 0 5px;
+      }
+      button:hover {
+          background-color: #69C4E2;
+      }
+      button:disabled {
+          background-color: #d3d3d3;
+          cursor: not-allowed;
+      }
+      .stats {
+          text-align: center;
+          margin-top: 5px;
+          font-size: 0.9rem;
+          color: #555;
+      }
+      /* Shake animation for edges being deleted */
+      @keyframes shake {
+          0% { transform: translateX(0); }
+          10% { transform: translateX(-2px); }
+          20% { transform: translateX(2px); }
+          30% { transform: translateX(-3px); }
+          40% { transform: translateX(3px); }
+          50% { transform: translateX(-2px); }
+          60% { transform: translateX(2px); }
+          70% { transform: translateX(-1px); }
+          80% { transform: translateX(1px); }
+          90% { transform: translateX(-1px); }
+          100% { transform: translateX(0); opacity: 0; }
+      }
+      .edge.deleting {
+          animation: shake 1s ease-in-out forwards;
+      }
+      /* Line extension animation for new edges - Safari friendly */
+      .edge.entering {
+          stroke: #888;
+          stroke-width: 1;
+      }
+      /* New colorFlash animation for nodes changing color */
+      @keyframes colorFlash {
+          0% { fill: #d3d3d3; }
+          50% { fill: #FF00FF; }
+          100% { fill: #FF00FF; }
+      }
+      .node.flashing {
+          animation: colorFlash 0.8s ease-in-out;
+      }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+      const MiniNetwork = React.forwardRef((props, ref) => {
+          // Destructure the animationSpeedRef from props, with fallback
+          const { animationSpeedRef } = props;
+          const width = 300;
+          const height = 300;
+          const numNodes = 25;
+          const [nodes, setNodes] = React.useState([]);
+          const [edges, setEdges] = React.useState([]);
+          const [counter, setCounter] = React.useState(0);
+          const [autoPlaying, setAutoPlaying] = React.useState(false);
+          const autoIntervalRef = React.useRef(null);
+          const initialConfigRef = React.useRef(null);
+  
+          // Calculate network statistics
+          const pinkNodeCount = nodes.filter(n => n.group === 2).length;
+          const grayNodeCount = nodes.filter(n => n.group === 1).length;
+          const edgeCount = edges.length;
+  
+          const generateNodes = () => {
+              const newNodes = [];
+              const margin = 20;
+              const minDistance = 20;
+              while (newNodes.length < numNodes) {
+                  const x = margin + Math.random() * (width - 2 * margin);
+                  const y = margin + Math.random() * (height - 2 * margin);
+                  if (!newNodes.some(n => Math.hypot(n.x - x, n.y - y) < minDistance)) {
+                      // Start with a few seed pink nodes (20%)
+                      newNodes.push({
+                          id: newNodes.length + 1,
+                          x,
+                          y,
+                          group: Math.random() < 0.2 ? 2 : 1
+                      });
+                  }
+              }
+              return newNodes;
+          };
+  
+          const generateEdges = (nodes) => {
+              const newEdges = [];
+              // Create initial proximity-based connections
+              for (let i = 0; i < nodes.length; i++) {
+                  const current = nodes[i];
+                  const neighbors = nodes.slice(i + 1).map(n => ({
+                      id: n.id,
+                      d: Math.hypot(current.x - n.x, current.y - n.y)
+                  }));
+                  neighbors.sort((a, b) => a.d - b.d);
+                  
+                  // Connect to 2-4 nearest neighbors
+                  const k = 2 + Math.floor(Math.random() * 3);
+                  for (let j = 0; j < Math.min(k, neighbors.length); j++) {
+                      newEdges.push({ source: current.id, target: neighbors[j].id });
+                  }
+              }
+              return newEdges;
+          };
+  
+          React.useEffect(() => {
+              const initialNodes = generateNodes();
+              const initialEdges = generateEdges(initialNodes);
+              setNodes(initialNodes);
+              setEdges(initialEdges);
+              initialConfigRef.current = { nodes: initialNodes, edges: initialEdges };
+          }, []);
+  
+          const evolveNetwork = () => {
+              // Randomly choose which type of change to make
+              const changeType = Math.random();
+              
+              // 40% chance - Social influence: change node color based on neighbors
+              if (changeType < 0.4) {
+                  // Find gray nodes with pink neighbors (social influence)
+                  const candidates = nodes.filter(node => {
+                      if (node.group !== 1) return false; // Only gray nodes can be influenced
+                      
+                      // Count pink neighbors
+                      const neighborEdges = edges.filter(edge => 
+                          edge.source === node.id || edge.target === node.id
+                      );
+                      
+                      const pinkNeighborCount = neighborEdges.reduce((count, edge) => {
+                          const neighborId = edge.source === node.id ? edge.target : edge.source;
+                          const neighbor = nodes.find(n => n.id === neighborId);
+                          return count + (neighbor && neighbor.group === 2 ? 1 : 0);
+                      }, 0);
+                      
+                      // Influence probability increases with more pink neighbors
+                      return pinkNeighborCount > 0;
+                  });
+                  
+                  if (candidates.length > 0) {
+                      // Select a candidate with probability proportional to their pink neighbor count
+                      const weightedCandidates = candidates.map(node => {
+                          const pinkNeighborCount = edges.reduce((count, edge) => {
+                              if (edge.source !== node.id && edge.target !== node.id) return count;
+                              const neighborId = edge.source === node.id ? edge.target : edge.source;
+                              const neighbor = nodes.find(n => n.id === neighborId);
+                              return count + (neighbor && neighbor.group === 2 ? 1 : 0);
+                          }, 0);
+                          
+                          // Weight by pink neighbor count
+                          return { node, weight: pinkNeighborCount };
+                      });
+                      
+                      const totalWeight = weightedCandidates.reduce((sum, c) => sum + c.weight, 0);
+                      let random = Math.random() * totalWeight;
+                      let selectedNode = null;
+                      
+                      for (const candidate of weightedCandidates) {
+                          random -= candidate.weight;
+                          if (random <= 0) {
+                              selectedNode = candidate.node;
+                              break;
+                          }
+                      }
+                      
+                      if (!selectedNode) selectedNode = candidates[Math.floor(Math.random() * candidates.length)].node;
+                      
+                      // Change node color
+                      setNodes(prevNodes => 
+                          prevNodes.map(n => 
+                              n.id === selectedNode.id ? { ...n, group: 2, flashing: true } : n
+                          )
+                      );
+                      
+                      // Remove flashing class after animation
+                      setTimeout(() => {
+                          setNodes(current => 
+                              current.map(n => 
+                                  n.id === selectedNode.id ? { ...n, flashing: false } : n
+                              )
+                          );
+                      }, 800);
+                  } else {
+                      // If no candidates, try another evolution type
+                      evolveNetwork();
+                      return;
+                  }
+              } 
+              // 30% chance - Selection: Add new edge (homophily-based preference)
+              else if (changeType < 0.7) {
+                  // Attempt to create a new edge with preference for same-color connections
+                  let attempts = 0;
+                  let success = false;
+                  
+                  while (attempts < 50 && !success) {
+                      // Pick two random nodes with preference for same-color pairs
+                      let nodeA, nodeB;
+                      
+                      // 70% chance to pick same-color nodes
+                      if (Math.random() < 0.7) {
+                          // Decide which group to pick from
+                          const pickFromGroup = Math.random() < 0.5 ? 1 : 2;
+                          const groupNodes = nodes.filter(n => n.group === pickFromGroup);
+                          
+                          if (groupNodes.length >= 2) {
+                              const idxA = Math.floor(Math.random() * groupNodes.length);
+                              let idxB = Math.floor(Math.random() * groupNodes.length);
+                              while (idxB === idxA) {
+                                  idxB = Math.floor(Math.random() * groupNodes.length);
+                              }
+                              
+                              nodeA = groupNodes[idxA];
+                              nodeB = groupNodes[idxB];
+                          } else {
+                              // Not enough nodes in the group, pick randomly
+                              nodeA = nodes[Math.floor(Math.random() * nodes.length)];
+                              nodeB = nodes[Math.floor(Math.random() * nodes.length)];
+                          }
+                      } else {
+                          // Random pair of nodes
+                          nodeA = nodes[Math.floor(Math.random() * nodes.length)];
+                          nodeB = nodes[Math.floor(Math.random() * nodes.length)];
+                      }
+                      
+                      // Check if valid pair and edge doesn't already exist
+                      if (nodeA.id !== nodeB.id && 
+                          !edges.some(e => (e.source === nodeA.id && e.target === nodeB.id) || 
+                                           (e.source === nodeB.id && e.target === nodeA.id))) {
+                          // Add new edge with initial animation progress of 0
+                          const newEdge = { 
+                              source: nodeA.id, 
+                              target: nodeB.id, 
+                              entering: true,
+                              animationProgress: 0
+                          };
+                          
+                          setEdges(prevEdges => [
+                              ...prevEdges, 
+                              newEdge
+                          ]);
+                          
+                          // Animate the edge growth
+                          const startTime = Date.now();
+                          const duration = 800; // 800ms animation
+                          
+                          const animateEdge = () => {
+                              const elapsed = Date.now() - startTime;
+                              const progress = Math.min(elapsed / duration, 1);
+                              
+                              setEdges(prevEdges => 
+                                  prevEdges.map(edge => 
+                                      (edge.source === newEdge.source && edge.target === newEdge.target) ? 
+                                      { ...edge, animationProgress: progress } : edge
+                                  )
+                              );
+                              
+                              if (progress < 1) {
+                                  requestAnimationFrame(animateEdge);
+                              } else {
+                                  // Animation complete, remove animation flags
+                                  setTimeout(() => {
+                                      setEdges(prevEdges => 
+                                          prevEdges.map(edge => 
+                                              (edge.source === newEdge.source && edge.target === newEdge.target) ? 
+                                              { 
+                                                  source: edge.source, 
+                                                  target: edge.target, 
+                                                  entering: false,
+                                                  animationProgress: undefined
+                                              } : edge
+                                          )
+                                      );
+                                  }, 100);
+                              }
+                          };
+                          
+                          // Start the animation
+                          requestAnimationFrame(animateEdge);
+                          
+                          success = true;
+                      }
+                      
+                      attempts++;
+                  }
+                  
+                  if (!success) {
+                      // If couldn't add edge, try another evolution type
+                      evolveNetwork();
+                      return;
+                  }
+              } 
+              // 30% chance - Edge removal (preferring cross-group edges)
+              else {
+                  if (edges.length > nodes.length / 2) { // Maintain minimum connectivity
+                      // Identify candidate edges for removal
+                      const edgeCandidates = edges.map(edge => {
+                          const sourceNode = nodes.find(n => n.id === edge.source);
+                          const targetNode = nodes.find(n => n.id === edge.target);
+                          
+                          if (!sourceNode || !targetNode) return { edge, weight: 0 };
+                          
+                          // Cross-group edges more likely to be removed
+                          const isDifferentGroup = sourceNode.group !== targetNode.group;
+                          const weight = isDifferentGroup ? 3 : 1;
+                          
+                          return { edge, weight };
+                      });
+                      
+                      // Select edge with weighted probability
+                      const totalWeight = edgeCandidates.reduce((sum, c) => sum + c.weight, 0);
+                      let random = Math.random() * totalWeight;
+                      let selectedEdge = null;
+                      
+                      for (const candidate of edgeCandidates) {
+                          random -= candidate.weight;
+                          if (random <= 0) {
+                              selectedEdge = candidate.edge;
+                              break;
+                          }
+                      }
+                      
+                      if (!selectedEdge) selectedEdge = edgeCandidates[Math.floor(Math.random() * edgeCandidates.length)].edge;
+                      
+                      // Add deleting animation
+                      setEdges(prevEdges => 
+                          prevEdges.map(edge => 
+                              (edge.source === selectedEdge.source && edge.target === selectedEdge.target) ? 
+                              { ...edge, deleting: true } : edge
+                          )
+                      );
+                      
+                      // Remove edge after animation
+                      setTimeout(() => {
+                          setEdges(prevEdges => 
+                              prevEdges.filter(edge => !edge.deleting)
+                          );
+                      }, 500);
+                  } else {
+                      // If too few edges, try another evolution type
+                      evolveNetwork();
+                      return;
+                  }
+              }
+              
+              // Increment counter for tracking changes
+              setCounter(prev => prev + 1);
+          };
+  
+          const toggleAutoPlay = () => {
+              if (autoPlaying) {
+                  clearInterval(autoIntervalRef.current);
+                  setAutoPlaying(false);
+              } else {
+                  // Get the global speed from the ref passed from parent
+                  const globalSpeed = props.animationSpeedRef ? props.animationSpeedRef.current : 1500;
+                  
+                  autoIntervalRef.current = setInterval(() => {
+                      evolveNetwork();
+                  }, globalSpeed);
+                  setAutoPlaying(true);
+              }
+          };
+  
+          const resetNetwork = () => {
+              if (initialConfigRef.current) {
+                  setNodes(initialConfigRef.current.nodes);
+                  setEdges(initialConfigRef.current.edges);
+                  setCounter(0);
+              }
+              if (autoPlaying) {
+                  clearInterval(autoIntervalRef.current);
+                  setAutoPlaying(false);
+              }
+          };
+  
+          // Expose methods via ref
+          React.useImperativeHandle(ref, () => ({
+              evolveNetwork,
+              resetNetwork,
+              stopAutoPlay: () => {
+                  if (autoPlaying) {
+                      clearInterval(autoIntervalRef.current);
+                      setAutoPlaying(false);
+                  }
+              }
+          }));
+          
+          return (
+              <div className="mini-network">
+                  <h4>{props.title}</h4>
+                  <svg width={width} height={height}>
+                      {edges.map((edge, index) => {
+                          const source = nodes.find(n => n.id === edge.source);
+                          const target = nodes.find(n => n.id === edge.target);
+                          if (!source || !target) return null;
+                          let className = "edge";
+                          if (edge.deleting) className += " deleting";
+                          else if (edge.entering) className += " entering";
+                          
+                          // For entering edges, calculate animated line endpoints
+                          let x1 = source.x;
+                          let y1 = source.y;
+                          let x2 = target.x;
+                          let y2 = target.y;
+                          
+                          // If it's an entering edge, use animated values
+                          if (edge.entering && edge.animationProgress !== undefined) {
+                              // Calculate point along the line based on animation progress
+                              x2 = source.x + (target.x - source.x) * edge.animationProgress;
+                              y2 = source.y + (target.y - source.y) * edge.animationProgress;
+                          }
+                          
+                          return (
+                              <line
+                                  key={`edge-${source.id}-${target.id}-${index}`}
+                                  x1={x1}
+                                  y1={y1}
+                                  x2={x2}
+                                  y2={y2}
+                                  stroke="#888"
+                                  strokeWidth="1"
+                                  className={className}
+                                  strokeLinecap="round"
+                              />
+                          );
+                      })}
+                      {nodes.map(node => {
+                          let className = "node";
+                          if (node.flashing) className += " flashing";
+                          return (
+                              <circle
+                                  key={`node-${node.id}`}
+                                  cx={node.x}
+                                  cy={node.y}
+                                  r={6}
+                                  fill={node.group === 1 ? "#d3d3d3" : "#FF00FF"}
+                                  className={className}
+                              />
+                          );
+                      })}
+                  </svg>
+                  <div className="stats">
+                      Fumători: {pinkNodeCount} | Nefumători: {grayNodeCount}
+                  </div>
+                  <div className="controls">
+                      <button onClick={evolveNetwork}>Următorul pas</button>
+                      <button onClick={toggleAutoPlay}>{autoPlaying ? 'Oprește' : 'Auto'}</button>
+                      <button onClick={resetNetwork}>Reset</button>
+                  </div>
+              </div>
+          );
+      });
+  
+      function Dashboard() {
+          const networkCount = 9;
+          const networks = React.useRef([]);
+          const [isGlobalAutoPlaying, setIsGlobalAutoPlaying] = React.useState(false);
+          const [animationSpeed, setAnimationSpeed] = React.useState(1500); // Default speed (ms)
+          const globalIntervalRef = React.useRef(null);
+          
+          // Create refs for each network component
+          React.useEffect(() => {
+              networks.current = Array(networkCount).fill().map(() => React.createRef());
+          }, []);
+          
+          // Function to toggle global autoplay
+          const toggleGlobalAutoPlay = () => {
+              if (isGlobalAutoPlaying) {
+                  clearInterval(globalIntervalRef.current);
+                  
+                  // Stop autoplay for each individual network
+                  networks.current.forEach(networkRef => {
+                      if (networkRef.current && networkRef.current.stopAutoPlay) {
+                          networkRef.current.stopAutoPlay();
+                      }
+                  });
+                  
+                  setIsGlobalAutoPlaying(false);
+              } else {
+                  // Start evolving all networks at current speed
+                  startGlobalAutoplay();
+                  setIsGlobalAutoPlaying(true);
+              }
+          };
+
+          // Function to start global autoplay with current speed
+          const startGlobalAutoplay = () => {
+              clearInterval(globalIntervalRef.current);
+              globalIntervalRef.current = setInterval(() => {
+                  networks.current.forEach(networkRef => {
+                      if (networkRef.current && networkRef.current.evolveNetwork) {
+                          networkRef.current.evolveNetwork();
+                      }
+                  });
+              }, animationSpeed);
+          };
+          
+          // Update interval timing when speed changes
+          React.useEffect(() => {
+              if (isGlobalAutoPlaying) {
+                  startGlobalAutoplay();
+              }
+          }, [animationSpeed]);
+          
+          // Create a ref to share the animation speed with child components
+          const animationSpeedRef = React.useRef(animationSpeed);
+          React.useEffect(() => {
+              animationSpeedRef.current = animationSpeed;
+          }, [animationSpeed]);
+          
+          // Function to reset all networks
+          const resetAllNetworks = () => {
+              if (isGlobalAutoPlaying) {
+                  clearInterval(globalIntervalRef.current);
+                  setIsGlobalAutoPlaying(false);
+              }
+              
+              networks.current.forEach(networkRef => {
+                  if (networkRef.current && networkRef.current.resetNetwork) {
+                      networkRef.current.resetNetwork();
+                  }
+              });
+          };
+
+          // Handle speed slider change
+          const handleSpeedChange = (e) => {
+              // Convert slider value (1-10) to milliseconds (2000ms to 200ms)
+              const sliderValue = parseInt(e.target.value);
+              const newSpeed = 2100 - (sliderValue * 190);
+              setAnimationSpeed(newSpeed);
+          };
+          
+          // Create network components with refs
+          const networkComponents = [];
+          for (let i = 0; i < networkCount; i++) {
+              networkComponents.push(
+                  <MiniNetwork 
+                      key={i} 
+                      title={`Rețeaua ${i + 1}`} 
+                      ref={networks.current[i]}
+                      animationSpeedRef={animationSpeedRef}
+                  />
+              );
+          }
+          
+          return (
+              <div className="container">
+                  <div className="title">Rețele Personale de fumat</div>
+                  <div className="description">
+                      
+                  </div>
+                  <div className="global-controls">
+                      <button onClick={toggleGlobalAutoPlay}>
+                          {isGlobalAutoPlaying ? 'Oprește toate rețelele' : 'Pornește toate rețelele'}
+                      </button>
+                      <button onClick={resetAllNetworks}>
+                          Resetează toate rețelele
+                      </button>
+                      <div className="speed-control">
+                          <label>Viteză: Lent</label>
+                          <input 
+                              type="range" 
+                              min="1" 
+                              max="10" 
+                              defaultValue="5"
+                              onChange={handleSpeedChange}
+                              className="speed-slider"
+                          />
+                          <label>Rapid</label>
+                      </div>
+                  </div>
+                  <div className="grid">
+                      {networkComponents}
+                  </div>
+              </div>
+          );
+      }
+  
+      ReactDOM.render(<Dashboard />, document.getElementById('root'));
+  </script>
+</body>
+</html>
