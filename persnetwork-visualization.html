@@ -479,7 +479,8 @@
                       clearInterval(autoIntervalRef.current);
                       setAutoPlaying(false);
                   }
-              }
+              },
+              getCounter: () => counter
           }));
           
           return (
@@ -554,6 +555,8 @@
           const [isGlobalAutoPlaying, setIsGlobalAutoPlaying] = React.useState(false);
           const [animationSpeed, setAnimationSpeed] = React.useState(1500); // Default speed (ms)
           const globalIntervalRef = React.useRef(null);
+          const totalChangesRef = React.useRef(0);
+          const maxChanges = 40; // Maximum number of changes before auto-stop
           
           // Create refs for each network component
           React.useEffect(() => {
@@ -574,6 +577,9 @@
                   
                   setIsGlobalAutoPlaying(false);
               } else {
+                  // Reset counter for new autoplay session
+                  totalChangesRef.current = 0;
+                  
                   // Start evolving all networks at current speed
                   startGlobalAutoplay();
                   setIsGlobalAutoPlaying(true);
@@ -584,11 +590,30 @@
           const startGlobalAutoplay = () => {
               clearInterval(globalIntervalRef.current);
               globalIntervalRef.current = setInterval(() => {
+                  // Evolve each network
                   networks.current.forEach(networkRef => {
                       if (networkRef.current && networkRef.current.evolveNetwork) {
                           networkRef.current.evolveNetwork();
                       }
                   });
+                  
+                  // Increment the total changes counter
+                  totalChangesRef.current++;
+                  
+                  // Check if we've reached the maximum changes
+                  if (totalChangesRef.current >= maxChanges) {
+                      // Stop autoplay
+                      clearInterval(globalIntervalRef.current);
+                      
+                      // Stop autoplay for each individual network
+                      networks.current.forEach(networkRef => {
+                          if (networkRef.current && networkRef.current.stopAutoPlay) {
+                              networkRef.current.stopAutoPlay();
+                          }
+                      });
+                      
+                      setIsGlobalAutoPlaying(false);
+                  }
               }, animationSpeed);
           };
           
@@ -611,6 +636,8 @@
                   clearInterval(globalIntervalRef.current);
                   setIsGlobalAutoPlaying(false);
               }
+              
+              totalChangesRef.current = 0;
               
               networks.current.forEach(networkRef => {
                   if (networkRef.current && networkRef.current.resetNetwork) {
@@ -635,6 +662,7 @@
                       key={i} 
                       ref={networks.current[i]}
                       animationSpeedRef={animationSpeedRef}
+                      title={`Rețea ${i + 1}`}
                   />
               );
           }
@@ -643,7 +671,7 @@
               <div className="container">
                   <div className="title">Rețele Personale de fumat</div>
                   <div className="description">
-                      
+                      Rețele personale sociale cu evoluție automată
                   </div>
                   <div className="global-controls">
                       <button onClick={toggleGlobalAutoPlay}>
