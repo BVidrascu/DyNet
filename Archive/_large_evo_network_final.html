@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>Dynamic Social Network</title>
+  <link rel="icon" href="dynet_logo.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <style>
+      body {
+          margin: 0;
+          padding: 20px;
+          font-family: 'Poppins', sans-serif;
+          background: #f0f0f0;
+      }
+      .container {
+          max-width: 1000px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 10px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          padding: 20px;
+      }
+      .title {
+          text-align: center;
+          margin-bottom: 1rem;
+          font-size: 1.25rem;
+          font-weight: bold;
+      }
+      .description {
+          text-align: center;
+          color: #666;
+          margin-bottom: 1.5rem;
+          font-size: 0.875rem;
+      }
+      .controls {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-bottom: 20px;
+          justify-content: center;
+          align-items: center;
+      }
+      .control-group {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          justify-content: center;
+          align-items: center;
+      }
+      button {
+          padding: 8px 16px;
+          border: 0.5px solid rgba(173, 216, 230, 0.25);
+          border-radius: 10px;
+          background-color: rgba(173, 216, 230, 0.25);
+          -webkit-backdrop-filter: blur(4px);
+          backdrop-filter: blur(4px);
+          color: #333;
+          cursor: pointer;
+          font-size: 14px;
+          font-family: 'Poppins', sans-serif;
+          box-shadow: 0 3px 10px 0 rgba(31, 38, 135, 0.37);
+          transition: 1s all ease;
+          z-index: 10;
+      }
+      button:hover {
+          background-color: rgba(105, 196, 226, 0.35);
+          box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+          transform: translateY(-1px);
+      }
+      button:disabled {
+          background-color: rgba(170, 170, 170, 0.25);
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
+      }
+      .slider-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 5px;
+      }
+      input[type="range"] {
+          width: 200px;
+      }
+      @keyframes drawEdge {
+          to {
+              stroke-dashoffset: 0;
+          }
+      }
+      .edge-line {
+          stroke-dasharray: 1000;
+          stroke-dashoffset: 1000;
+          animation: drawEdge 0.5s ease-out forwards;
+      }
+      /* Help modal styles */
+      .help-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0,0,0,0.6);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 100;
+      }
+      .help-modal-content {
+          background: white;
+          padding: 20px;
+          border-radius: 8px;
+          max-width: 600px;
+          width: 90%;
+          font-family: 'Poppins', sans-serif;
+      }
+      .help-modal-content h2 {
+          margin-top: 0;
+      }
+      .stats {
+          display: flex;
+          justify-content: space-around;
+          margin: 10px 0;
+          font-size: 14px;
+      }
+      .stat-item {
+          text-align: center;
+      }
+      .stat-value {
+          font-weight: bold;
+          font-size: 16px;
+      }
+      .degree-histogram {
+          background-color: rgba(255, 255, 255, 0.8);
+          border-radius: 6px;
+          padding: 5px 10px;
+          margin: 5px auto;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          max-width: 800px;
+          text-align: center;
+      }
+
+      .histogram-title {
+          font-size: 12px;
+          color: #555;
+          text-align: center;
+          margin-bottom: 2px;
+      }
+
+      .trend-charts {
+          background-color: rgba(255, 255, 255, 0.8);
+          border-radius: 6px;
+          padding: 3px 5px;
+          margin: 8px auto;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          max-width: 650px; /* Increased from 550px */
+          text-align: center;
+      }
+
+      .chart-title {
+          font-size: 14px;
+          color: #555;
+          text-align: center;
+          margin-bottom: 5px;
+          font-weight: 500;
+      }
+
+      @keyframes pulse {
+          0% { opacity: 1; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.02); }
+          100% { opacity: 1; transform: scale(1); }
+      }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+      
+
+      const interpolateColor = (color1, color2, factor) => {
+          if (factor <= 0) return color1;
+          if (factor >= 1) return color2;
+          
+          // Convert hex to RGB
+          const hex2rgb = (hex) => {
+              const r = parseInt(hex.slice(1, 3), 16);
+              const g = parseInt(hex.slice(3, 5), 16);
+              const b = parseInt(hex.slice(5, 7), 16);
+              return [r, g, b];
+          };
+          
+          const [r1, g1, b1] = hex2rgb(color1);
+          const [r2, g2, b2] = hex2rgb(color2);
+          
+          // Interpolate
+          const r = Math.round(r1 + factor * (r2 - r1));
+          const g = Math.round(g1 + factor * (g2 - g1));
+          const b = Math.round(b1 + factor * (b2 - b1));
+          
+          // Convert back to hex
+          return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+      };
+
+      const width = 900;
+      const height = 680;
+      const centerX = width / 2;
+      const centerY = height / 2;
+
+      // Generate 100 nodes with a random but circular distribution
+      const fixedNodes = [];
+      const numNodes = 200;
+      
+      // Helper function to check if a position is too close to existing nodes
+      const isTooClose = (x, y, minDistance = 30) => {
+          for (const node of fixedNodes) {
+              const dx = node.x - x;
+              const dy = node.y - y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              if (distance < minDistance) {
+                  return true;
+              }
+          }
+          return false;
+      };
+      
+      // Generate nodes in a circular pattern with randomness
+      for (let i = 0; i < numNodes; i++) {
+          let x, y;
+          let attempts = 0;
+          const maxAttempts = 50;
+          
+          do {
+              // Use a circular distribution with some randomness
+              // This creates a more rounded overall shape but with random spacing
+              const angle = Math.random() * 2 * Math.PI;
+              
+              // Random radius that concentrates more nodes toward the center
+              // but ensures coverage throughout the area
+              let radius;
+              const distribution = Math.random();
+              
+              if (distribution < 0.25) {
+                  // 25% of nodes in the inner area
+                  radius = 80 + Math.random() * 60;
+              } else if (distribution < 0.75) {
+                  // 50% of nodes in the middle area
+                  radius = 140 + Math.random() * 100;
+              } else {
+                  // 25% of nodes in the outer area
+                  radius = 240 + Math.random() * 70;
+              }
+              
+              // Add some random variation to break perfect circularity
+              // but maintain the overall rounded look
+              const variationFactor = 0.2; // 20% variation maximum
+              const angleVariation = (Math.random() * 2 - 1) * 0.05 * Math.PI;
+              const adjustedAngle = angle + angleVariation;
+              const radiusVariation = 1 + (Math.random() * 2 - 1) * variationFactor;
+              const adjustedRadius = radius * radiusVariation;
+              
+              // Calculate position
+              x = centerX + adjustedRadius * Math.cos(adjustedAngle);
+              y = centerY + adjustedRadius * Math.sin(adjustedAngle);
+              
+              // Ensure point is within canvas bounds
+              x = Math.max(30, Math.min(width - 30, x));
+              y = Math.max(30, Math.min(height - 30, y));
+              
+              attempts++;
+              
+              // If we can't find a good position after many attempts, reduce spacing requirements
+              if (attempts > maxAttempts) {
+                  if (!isTooClose(x, y, 20)) {
+                      break;
+                  }
+                  if (attempts > maxAttempts * 1.5) {
+                      break;
+                  }
+              }
+          } while (isTooClose(x, y));
+          
+          fixedNodes.push({
+              id: i + 1,
+              x,
+              y
+          });
+      }
+
+      // Assign initial groups based on position within the circular network
+      const initialGroups = fixedNodes.map((node, i) => {
+          // Calculate node's distance from center
+          const dx = node.x - centerX;
+          const dy = node.y - centerY;
+          const distanceFromCenter = Math.sqrt(dx * dx + dy * dy);
+          
+          // Calculate angle (in radians) of the node from center
+          // 0 is right, π/2 is bottom, π is left, 3π/2 is top
+          let angle = Math.atan2(dy, dx);
+          if (angle < 0) angle += 2 * Math.PI; // Normalize to 0-2π
+          
+          // Create a gradient of probabilities based on position
+          // Left half (angle between π/2 and 3π/2) has more non-smokers
+          if (angle > Math.PI/2 && angle < 3*Math.PI/2) {
+              return Math.random() < 0.80 ? 1 : 2; // 75% non-smokers on left
+          } 
+          // Right half has more smokers
+          else {
+              return Math.random() < 0.40 ? 1 : 2; // % non-smokers on right
+          }
+      });
+
+      // Node colors: Group 1 (non-smokers) uses light gray, Group 2 (smokers) uses dark red.
+    const colors = ['#d3d3d3', '#ff4d4d'];
+
+      // Generate a sequence of changes to the network
+      // We'll generate these programmatically to handle the larger network
+      const changes = [];
+      
+      
+      // Helper function to find nearby nodes
+      const findNearbyNodes = (nodeId, maxDistance = 100) => {
+          const node = fixedNodes[nodeId - 1];
+          const nearbyNodes = [];
+          
+          for (let i = 0; i < fixedNodes.length; i++) {
+              if (i + 1 !== nodeId) { // Skip self
+                  const otherNode = fixedNodes[i];
+                  const dx = otherNode.x - node.x;
+                  const dy = otherNode.y - node.y;
+                  const distance = Math.sqrt(dx * dx + dy * dy);
+                  
+                  if (distance <= maxDistance) {
+                      nearbyNodes.push(i + 1);
+                  }
+              }
+          }
+          
+          return nearbyNodes;
+      };
+      
+      // Create initial connections - each node connects to 1-2 nearest nodes (halved)
+      const initialEdges = [];
+      for (let i = 0; i < fixedNodes.length; i++) {
+          const nodeId = i + 1;
+          const nearbyNodes = findNearbyNodes(nodeId, 100).sort((a, b) => {
+              const nodeA = fixedNodes[a - 1];
+              const nodeB = fixedNodes[b - 1];
+              const nodeSource = fixedNodes[i];
+
+              const distA = Math.sqrt(Math.pow(nodeA.x - nodeSource.x, 2) + Math.pow(nodeA.y - nodeSource.y, 2));
+              const distB = Math.sqrt(Math.pow(nodeB.x - nodeSource.x, 2) + Math.pow(nodeB.y - nodeSource.y, 2));
+
+              return distA - distB;
+          });
+
+          // Connect to 1-2 closest nodes (reduced from 2-4)
+          const connectionCount = 1 + Math.floor(Math.random() * 2);
+          for (let j = 0; j < Math.min(connectionCount, nearbyNodes.length); j++) {
+              const targetNodeId = nearbyNodes[j];
+              // Avoid duplicate connections by only connecting if source < target
+              if (nodeId < targetNodeId) {
+                  initialEdges.push({
+                      source: nodeId,
+                      target: targetNodeId,
+                      key: `${nodeId}-${targetNodeId}`,
+                      progress: 1, // Fully drawn initially
+                  });
+              }
+          }
+      }
+
+      // Add some longer distance connections to create "small world" network properties
+      const longConnections = 60; // Increased from 30
+      for (let i = 0; i < longConnections; i++) {
+          const sourceNodeId = Math.floor(Math.random() * fixedNodes.length) + 1;
+          let targetNodeId;
+          
+          // Find a node that's far away from the source
+          do {
+              targetNodeId = Math.floor(Math.random() * fixedNodes.length) + 1;
+          } while (
+              sourceNodeId === targetNodeId || 
+              findNearbyNodes(sourceNodeId, 150).includes(targetNodeId)
+          );
+          
+          changes.push({ type: 'edge', action: 'add', source: Math.min(sourceNodeId, targetNodeId), target: Math.max(sourceNodeId, targetNodeId) });
+      }
+      
+      // Find initial "seed" smoker nodes - start with just a few nodes
+      // We'll pick 3 nodes from the right side that are already smokers
+      const initialSeeders = fixedNodes
+          .map((node, index) => ({ node, index: index + 1, group: initialGroups[index] }))
+          .filter(item => item.group === 2 && item.node.x > centerX + 100);
+          
+      // Sort by distance from center to get varied starting points
+      initialSeeders.sort((a, b) => {
+          const distA = Math.sqrt(Math.pow(a.node.x - centerX, 2) + Math.pow(a.node.y - centerY, 2));
+          const distB = Math.sqrt(Math.pow(b.node.x - centerX, 2) + Math.pow(b.node.y - centerY, 2));
+          return distA - distB;
+      });
+      
+      // Select a few spread out nodes as initial influencers
+      const infectionPoints = [];
+      if (initialSeeders.length >= 3) {
+          infectionPoints.push(initialSeeders[0].index); // One close to center
+          infectionPoints.push(initialSeeders[Math.floor(initialSeeders.length / 2)].index); // One in middle
+          infectionPoints.push(initialSeeders[initialSeeders.length - 1].index); // One at edge
+      } else {
+          // Fallback if we don't have enough initial smokers
+          for (let i = 0; i < Math.min(3, initialSeeders.length); i++) {
+              infectionPoints.push(initialSeeders[i].index);
+          }
+      }
+      
+      // Remove resistance centers to allow smoking to spread more effectively
+      const resistancePoints = [];
+      
+      // Simulate "spread" of smoking behavior with increasing influence over time
+      const processedNodes = new Set([...infectionPoints]);
+      const spreadQueue = [...infectionPoints];
+      
+      // Initialize a wave counter for increasing influence
+      let waveCount = 0;
+      const maxWaves = 25; // Control the overall extent of spread
+      
+      while (spreadQueue.length > 0 && waveCount < maxWaves) {
+          waveCount++;
+          
+          // Get the number of nodes to process in this wave
+          // Process more nodes in each successive wave
+          const nodesInWave = Math.min(spreadQueue.length, 3 + Math.floor(waveCount / 3));
+          const currentWaveNodes = [];
+          
+          // Take nodes from the queue for this wave
+          for (let i = 0; i < nodesInWave; i++) {
+              if (spreadQueue.length > 0) {
+                  currentWaveNodes.push(spreadQueue.shift());
+              }
+          }
+          
+          // Process each node in the current wave
+          for (const sourceNodeId of currentWaveNodes) {
+              // Find nearby nodes with increasing radius over time
+              // This simulates the growing influence of smoking behavior
+              const searchRadius = 100 + Math.min(waveCount * 5, 150);
+              const nearbyNodes = findNearbyNodes(sourceNodeId, searchRadius);
+              
+              for (const targetNodeId of nearbyNodes) {
+                  if (!processedNodes.has(targetNodeId)) {
+                      // Increased probability of conversion over time
+                      // Early waves have lower influence, later waves have higher influence
+                      const baseProb = 0.6; // Starting probability
+                      const dynamicInfluence = (waveCount / maxWaves) * 0.35; // Make influence grow, cap at 0.35
+                      const conversionProb = Math.min(baseProb + dynamicInfluence, 0.9); // Ensure prob doesn't exceed 0.9
+
+                      if (Math.random() < conversionProb) {
+                          if (Math.random() < 0.15) { // Decreased from 0.5 to make color changes much less frequent here
+                              changes.push({ type: 'color', nodeId: targetNodeId, newGroup: 2 });
+                              processedNodes.add(targetNodeId);
+                              spreadQueue.push(targetNodeId);
+                          }
+                      }
+                  }
+              }
+          }
+      }
+      
+      // Add some edge deletions to simulate changing social relationships
+      const numEdgeDeletions = 15;
+      for (let i = 0; i < numEdgeDeletions; i++) {
+          const edgeIdx = Math.floor(Math.random() * (changes.length * 0.6)); // Get from first 60% of edges
+          const edge = changes[edgeIdx];
+          
+          if (edge.type === 'edge' && edge.action === 'add') {
+              // Add deletion of this edge later in the sequence
+              changes.push({ 
+                  type: 'edge', 
+                  action: 'delete', 
+                  source: edge.source, 
+                  target: edge.target 
+              });
+          }
+      }
+      
+      // Add some new connections forming later in the simulation (smoker to smoker preferentially)
+      const newLateConnections = 40; // Increased from 20
+      for (let i = 0; i < newLateConnections; i++) {
+          // Prefer smokers for new connections
+          const smokerNodes = [];
+          for (let j = 0; j < fixedNodes.length; j++) {
+              if (initialGroups[j] === 2) {
+                  smokerNodes.push(j + 1);
+              }
+          }
+          
+          const sourceNodeId = smokerNodes[Math.floor(Math.random() * smokerNodes.length)];
+          const nearbyNodes = findNearbyNodes(sourceNodeId, 120).filter(id => 
+              !changes.some(change => 
+                  change.type === 'edge' && 
+                  change.action === 'add' && 
+                  ((change.source === sourceNodeId && change.target === id) || 
+                   (change.source === id && change.target === sourceNodeId))
+              )
+          );
+          
+          if (nearbyNodes.length > 0) {
+              const targetNodeId = nearbyNodes[Math.floor(Math.random() * nearbyNodes.length)];
+              changes.push({ 
+                  type: 'edge', 
+                  action: 'add', 
+                  source: Math.min(sourceNodeId, targetNodeId), 
+                  target: Math.max(sourceNodeId, targetNodeId) 
+              });
+          }
+      }
+      
+      // Limit to a reasonable number of changes to avoid overwhelming the UI
+      if (changes.length > 500) {
+          changes.splice(500);
+      }
+
+      // Add additional neutral events to fill up the simulation length
+      while (changes.length < 500) {
+          // Add empty "pause" steps to extend the simulation length
+          changes.push({ type: 'pause', duration: 1 });
+      }
+
+      const calculateNodeDegrees = (links) => {
+          const degrees = Array(fixedNodes.length).fill(0);
+          links.forEach((link) => {
+              degrees[link.source - 1]++;
+              degrees[link.target - 1]++;
+          });
+          return degrees;
+      };
+
+      const calculateDegreeDistribution = (degrees) => {
+          const distribution = {};
+          const maxDegree = Math.max(...degrees);
+          
+          // Initialize all possible degrees to 0
+          for (let i = 0; i <= maxDegree; i++) {
+              distribution[i] = 0;
+          }
+          
+          // Count nodes at each degree
+          degrees.forEach(degree => {
+              distribution[degree]++;
+          });
+          
+          return distribution;
+      };
+
+      function App() {
+          const [step, setStep] = React.useState(0);
+          const [nodeGroups, setNodeGroups] = React.useState(initialGroups);
+          const [activeLinks, setActiveLinks] = React.useState(initialEdges);
+          const [flashingNode, setFlashingNode] = React.useState(null);
+          const [flashCount, setFlashCount] = React.useState(0);
+          const [isPlaying, setIsPlaying] = React.useState(false); // Start paused for large network
+          const [isSoundEnabled, setIsSoundEnabled] = React.useState(false);
+          const [speed, setSpeed] = React.useState(500); // Default faster for large network
+          const [showHelp, setShowHelp] = React.useState(false);
+          const [nodesPerGroup, setNodesPerGroup] = React.useState({
+              group1: nodeGroups.filter(g => g === 1).length,
+              group2: nodeGroups.filter(g => g === 2).length
+          });
+          const [recoveryPhaseActive, setRecoveryPhaseActive] = React.useState(false);
+          const [recoveryStartStep, setRecoveryStartStep] = React.useState(0);
+          const [flashNetwork, setFlashNetwork] = React.useState(false); // Add this new state
+          const intervalRef = React.useRef(null);
+          const flashIntervalRef = React.useRef(null);
+          const nextAutomaticChangeRef = React.useRef(50); // For tracking automatic changes
+          const [nodeCountHistory, setNodeCountHistory] = React.useState([{
+              step: 0,
+              group1: nodeGroups.filter(g => g === 1).length,
+              group2: nodeGroups.filter(g => g === 2).length
+          }]);
+
+          const handleFlash = (nodeId, oldGroup, newGroup) => {
+              setFlashingNode(nodeId);
+              setFlashCount(0);
+              
+              if (flashIntervalRef.current) {
+                  clearInterval(flashIntervalRef.current);
+              }
+              
+              // Start transition animation
+              const startTime = Date.now();
+              const transitionDuration = 600;
+              
+              const animateTransition = () => {
+                  const elapsed = Date.now() - startTime;
+                  const progress = Math.min(elapsed / transitionDuration, 1);
+                  
+                  setFlashCount(progress * 100);
+                  
+                  if (progress < 1) {
+                      flashIntervalRef.current = requestAnimationFrame(animateTransition);
+                  } else {
+                      setFlashingNode(null);
+                  }
+              };
+              
+              requestAnimationFrame(animateTransition);
+          };
+
+          const animateLinkDeletion = (source, target) => {
+              const startTime = Date.now();
+              const shakeDuration = 300;
+              const deletionDuration = 300;
+              
+              const animateShake = () => {
+                  const now = Date.now();
+                  const elapsed = now - startTime;
+                  
+                  if (elapsed < shakeDuration) {
+                      const shakeProgress = elapsed / shakeDuration;
+                      const shakeAmount = Math.sin(shakeProgress * Math.PI * 10) * 2 * (1 - shakeProgress);
+                      
+                      setActiveLinks(prev => 
+                          prev.map(link => {
+                              if (link.source === source && link.target === target) {
+                                  return { ...link, shakeOffset: shakeAmount };
+                              }
+                              return link;
+                          })
+                      );
+                      
+                      requestAnimationFrame(animateShake);
+                  } else {
+                      animateFade();
+                  }
+              };
+              
+              const animateFade = () => {
+                  const fadeStartTime = Date.now();
+                  
+                  const fadeAnimation = () => {
+                      const now = Date.now();
+                      const elapsed = now - fadeStartTime;
+                      const fadeProgress = Math.min(elapsed / deletionDuration, 1);
+                      
+                      setActiveLinks(prev => 
+                          prev.map(link => {
+                              if (link.source === source && link.target === target) {
+                                  return { ...link, deletionProgress: fadeProgress };
+                              }
+                              return link;
+                          })
+                      );
+                      
+                      if (fadeProgress < 1) {
+                          requestAnimationFrame(fadeAnimation);
+                      } else {
+                          setActiveLinks(prev => 
+                              prev.filter(link => 
+                                  !(link.source === source && link.target === target)
+                              )
+                          );
+                          
+                          setTimeout(() => {
+                              updateNodeColors();
+                          }, 100);
+                      }
+                  };
+                  
+                  requestAnimationFrame(fadeAnimation);
+              };
+              
+              requestAnimationFrame(animateShake);
+          };
+
+          const updateNodeColors = () => {
+              const nodesToChange = [];
+              const currentNodeDegrees = calculateNodeDegrees(activeLinks);
+              
+              // Calculate current risk percentage for use in probability adjustments
+              const riskPct = nodesPerGroup.group2 / (nodesPerGroup.group1 + nodesPerGroup.group2);
+              
+              // Check if we should enter recovery phase (only check once when crossing threshold)
+              if (!recoveryPhaseActive && riskPct >= 0.7) {
+                  console.log("RECOVERY PHASE ACTIVATED: Risk factor reached 70%");
+                  setRecoveryPhaseActive(true);
+                  setRecoveryStartStep(step); // Store when recovery started
+                  
+                  // Flash the network when intervention activates
+                  setFlashNetwork(true);
+                  setTimeout(() => setFlashNetwork(false), 1500);
+              }
+              
+              // Check EVERY node for potential color changes (both risk and non-risk)
+              fixedNodes.forEach((node, index) => {
+                  const nodeId = node.id;
+                  const currentGroup = nodeGroups[index];
+                  const targetGroup = currentGroup === 1 ? 2 : 1;
+                  
+                  // Count connections to the opposite group
+                  let oppositeTypeNeighbors = 0;
+                  activeLinks.forEach(link => {
+                      if (link.source === nodeId) {
+                          const targetNodeGroup = nodeGroups[link.target - 1];
+                          if (targetNodeGroup !== currentGroup) {
+                              oppositeTypeNeighbors++;
+                          }
+                      } else if (link.target === nodeId) {
+                          const sourceNodeGroup = nodeGroups[link.source - 1];
+                          if (sourceNodeGroup !== currentGroup) {
+                              oppositeTypeNeighbors++;
+                          }
+                      }
+                  });
+                  
+                  // Base probability (different behavior based on recovery phase)
+                  let changeProb = 0.3; // Default baseline 30% chance
+                  
+                  if (recoveryPhaseActive) {
+                      // Calculate how far into the recovery phase we are (from 0.0 to 1.0)
+                      // Full strength after 50 steps from recovery start
+                      const recoveryStepsPassed = step - recoveryStartStep;
+                      const recoveryStrength = Math.min(recoveryStepsPassed / 50, 1.0);
+                      
+                      // ---------- RECOVERY PHASE LOGIC ----------
+                      if (currentGroup === 1 && targetGroup === 2) {
+                          // NON-RISK TO RISK: Make very unlikely in recovery phase
+                          changeProb = 0.05; // Only 5% base chance
+                          
+                          // Still allow some influence from connections, but much weaker
+                          if (oppositeTypeNeighbors >= 2) {
+                              changeProb = 0.1; // Only 10% even with 2+ risk neighbors
+                          }
+                          
+                          // Further reduce chance based on how prevalent risk already is
+                          changeProb *= (1 - riskPct*0.8); // Dramatic reduction
+                      } 
+                      else if (currentGroup === 2 && targetGroup === 1) {
+                          // RISK TO NON-RISK: Gradually increase probability, but with lower values
+                          // Normal phase: 30% baseline, up to 70% with 4+ non-risk neighbors
+                          // Full recovery: 40% baseline, up to 70% with 3+ non-risk neighbors (reduced from 70%-100%)
+                          
+                          // Start with normal probability (unchanged)
+                          let normalProb = 0.3;
+                          if (oppositeTypeNeighbors >= 2) {
+                              normalProb = 0.5;
+                          }
+                          if (oppositeTypeNeighbors >= 3) {
+                              normalProb = 0.6;
+                          }
+                          if (oppositeTypeNeighbors >= 4) {
+                              normalProb = 0.7;
+                          }
+                          
+                          // Calculate target recovery probability (REDUCED VALUES)
+                          let recoveryProb = 0.4;  // Reduced from 0.7
+                          if (oppositeTypeNeighbors >= 1) {
+                              recoveryProb = 0.5;  // Reduced from 0.8
+                          }
+                          if (oppositeTypeNeighbors >= 2) {
+                              recoveryProb = 0.6;  // Reduced from 0.9
+                          }
+                          if (oppositeTypeNeighbors >= 3) {
+                              recoveryProb = 0.7;  // Reduced from 1.0
+                          }
+                          
+                          // Gradually blend between normal and recovery probabilities (unchanged)
+                          changeProb = normalProb * (1 - recoveryStrength) + recoveryProb * recoveryStrength;
+                          
+                          // Reduce the boost based on risk percentage (smaller multipliers)
+                          const riskBoost = riskPct * (0.05 + 0.1 * recoveryStrength); // Reduced from (0.1 + 0.2)
+                          changeProb = Math.min(1.0, changeProb + riskBoost);
+                      }
+                  } 
+                  else {
+                      // ---------- NORMAL PHASE LOGIC (pre-70%) ----------
+                      // If 2+ connections to opposite type, increase to 60%
+                      if (oppositeTypeNeighbors >= 2) {
+                          // Only apply the 60% probability for non-risk to risk transitions
+                          if (currentGroup === 1 && targetGroup === 2) {
+                              changeProb = 0.6;
+                          }
+                      }
+                      
+                      // Reduce chance of changing TO risk factor if many risk nodes already exist
+                      if (targetGroup === 2) { // Would change to risk factor
+                          changeProb = changeProb * (1 - riskPct * 0.5); // Reduces probability as risk prevalence rises
+                      }
+
+                      // Set fixed 15% probability for risk to non-risk before intervention
+                      if (currentGroup === 2 && targetGroup === 1) {
+                          // Fixed 15% base probability for risk to non-risk changes (reduced from 20%)
+                          changeProb = 0.15;
+                          
+                          // Still give a small boost for having many non-risk neighbors (proportionally reduced)
+                          if (oppositeTypeNeighbors >= 3) {
+                              changeProb = 0.19; // Slight increase with 3+ non-risk neighbors (reduced from 25%)
+                          }
+                          if (oppositeTypeNeighbors >= 4) {
+                              changeProb = 0.23; // Minor boost with 4+ non-risk neighbors (reduced from 30%)
+                          }
+                      }
+                  }
+                  
+                  // Apply probability check
+                  if (Math.random() < changeProb) {
+                      nodesToChange.push({
+                          nodeId,
+                          currentGroup,
+                          targetGroup
+                      });
+                  }
+              });
+              
+              // Apply color changes
+              if (nodesToChange.length > 0) {
+                  // Randomly select one node to change from candidates
+                  const nodeToChange = nodesToChange[Math.floor(Math.random() * nodesToChange.length)];
+                  
+                  handleFlash(nodeToChange.nodeId, nodeToChange.currentGroup, nodeToChange.targetGroup);
+                  
+                  setTimeout(() => {
+                      setNodeGroups(prev => {
+                          const next = [...prev];
+                          next[nodeToChange.nodeId - 1] = nodeToChange.targetGroup;
+                          return next;
+                      });
+                      
+                      // Recalculate counts after updating nodeGroups
+                      setTimeout(recalculateNodeCounts, 50);
+                  }, 600);
+              }
+          };
+
+          const handleSliderChange = (e) => {
+              const newStep = parseInt(e.target.value, 10);
+              setStep(newStep);
+              
+              // Recalculate everything for this step
+              if (newStep === 0) {
+                  setNodeGroups(initialGroups);
+                  setActiveLinks(initialEdges);
+                  setNodesPerGroup({
+                      group1: initialGroups.filter(g => g === 1).length,
+                      group2: initialGroups.filter(g => g === 2).length
+                  });
+              } else {
+                  // For a simpler implementation, just replay the simulation up to the target step
+              }
+          };
+
+          const recalculateNodeCounts = () => {
+              // Count nodes in each group directly from the nodeGroups array
+              const group1Count = nodeGroups.filter(group => group === 1).length;
+              const group2Count = nodeGroups.filter(group => group === 2).length;
+              
+              // Update the state with accurate counts
+              setNodesPerGroup({
+                  group1: group1Count,
+                  group2: group2Count
+              });
+              
+              // Add current counts to history
+              setNodeCountHistory(prev => {
+                  // Only add new entry if step changed to avoid duplicates
+                  if (prev.length === 0 || prev[prev.length-1].step !== step) {
+                      return [...prev, {
+                          step,
+                          group1: group1Count,
+                          group2: group2Count
+                      }];
+                  }
+                  return prev;
+              });
+              
+              // Log the corrected counts (optional, for debugging)
+              console.log(`Recalculated counts: ${group1Count} non-risk, ${group2Count} risk`);
+          };
+
+          const handleSpeedChange = (e) => {
+              setSpeed(parseInt(e.target.value, 10));
+          };
+
+          const handleStep = () => {
+              if (step < changes.length) {
+                  const change = changes[step];
+                  
+                  // Handle pause events
+                  if (change.type === 'pause') {
+                      // Just advance the step counter for pause events
+                      // But still update node colors to allow recovery phase to work
+                      updateNodeColors();
+                      setStep((prev) => prev + 1);
+                      return;
+                  }
+                  
+                  // Process the normal change first
+                  if (change.type === 'color') {
+                      handleFlash(change.nodeId, nodeGroups[change.nodeId - 1], change.newGroup);
+                      setTimeout(() => {
+                          setNodeGroups((prev) => {
+                              const next = [...prev];
+                              next[change.nodeId - 1] = change.newGroup;
+                              return next;
+                          });
+                          
+                          // After updating nodeGroups, recalculate the counts
+                          setTimeout(recalculateNodeCounts, 50);
+                      }, 600);
+                  } else if (change.type === 'edge') {
+                      if (change.action === 'add') {
+                          const sourceNode = fixedNodes[change.source - 1];
+                          const nearbyNodes = findNearbyNodes(change.source, 100).filter(
+                              (targetNodeId) =>
+                                  !activeLinks.some(
+                                      (link) =>
+                                          (link.source === change.source && link.target === targetNodeId) ||
+                                          (link.source === targetNodeId && link.target === change.source)
+                                  )
+                          );
+
+                          if (nearbyNodes.length > 0) {
+                              const targetNodeId = nearbyNodes[0];
+                              setActiveLinks((prev) => [
+                                  ...prev,
+                                  {
+                                      source: change.source,
+                                      target: targetNodeId,
+                                      key: `${change.source}-${targetNodeId}-${Date.now()}`,
+                                      progress: 0,
+                                  },
+                              ]);
+
+                              const startTime = Date.now();
+                              const duration = 300;
+
+                              const animate = () => {
+                                  const now = Date.now();
+                                  const elapsed = now - startTime;
+                                  const progress = Math.min(elapsed / duration, 1);
+
+                                  setActiveLinks((prev) =>
+                                      prev.map((link) =>
+                                          link.source === change.source && link.target === targetNodeId
+                                              ? { ...link, progress }
+                                              : link
+                                      )
+                                  );
+
+                                  if (progress < 1) {
+                                      requestAnimationFrame(animate);
+                                  } else {
+                                      setTimeout(() => {
+                                          updateNodeColors();
+                                      }, 100);
+                                  }
+                              };
+
+                              requestAnimationFrame(animate);
+                          }
+                      } else if (change.action === 'delete') {
+                          setActiveLinks((prev) =>
+                              prev.map((link) => {
+                                  if (link.source === change.source && link.target === change.target) {
+                                      return { ...link, deleting: true, deletionProgress: 0, shakeOffset: 0 };
+                                  }
+                                  return link;
+                              })
+                          );
+                          animateLinkDeletion(change.source, change.target);
+                      }
+                  }
+
+                  recalculateNodeCounts();
+                  updateNodeColors(); // Force node color updates every step to enable recovery
+
+                  setStep((prev) => prev + 1);
+              } else {
+                  setIsPlaying(false);
+              }
+          };
+
+          React.useEffect(() => {
+              if (isPlaying) {
+                  intervalRef.current = setInterval(() => {
+                      if (step < changes.length) {
+                          handleStep();
+                      } else {
+                          setIsPlaying(false);
+                          clearInterval(intervalRef.current);
+                      }
+                  }, speed);
+
+                  return () => clearInterval(intervalRef.current);
+              }
+          }, [isPlaying, step, speed]);
+
+          const toggleHelp = () => {
+              setShowHelp(!showHelp);
+          };
+
+          const nodeDegrees = calculateNodeDegrees(activeLinks);
+
+          return (
+              <div className="container">
+                  
+                  <div className="stats">
+                      <div className="stat-item">
+                          <div>Nodes with risk factor:</div>
+                          <div className="stat-value">
+                              {nodesPerGroup.group2} ({Math.round((nodesPerGroup.group2 / (nodesPerGroup.group1 + nodesPerGroup.group2)) * 100)}%)
+                          </div>
+                      </div>
+                      <div className="stat-item">
+                          <div>Nodes without risk factor:</div>
+                          <div className="stat-value">
+                              {nodesPerGroup.group1} ({Math.round((nodesPerGroup.group1 / (nodesPerGroup.group1 + nodesPerGroup.group2)) * 100)}%)
+                          </div>
+                      </div>
+                      <div className="stat-item">
+                          <div>Number of connections:</div>
+                          <div className="stat-value">{activeLinks.length}</div>
+                      </div>
+                  </div>
+                  
+                  {recoveryPhaseActive && (
+                      <div className="intervention-banner" style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: "#4CAF50",
+                          color: "white",
+                          padding: "8px",
+                          marginBottom: "10px",
+                          borderRadius: "6px",
+                          fontWeight: "bold",
+                          boxShadow: "0 3px 10px rgba(0,0,0,0.2)",
+                          animation: flashNetwork ? "pulse 1.5s" : "none"
+                      }}>
+                          <svg width="24" height="24" style={{marginRight: "8px"}} viewBox="0 0 24 24">
+                              <path fill="white" d="M20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4C12.76,4 13.5,4.11 14.2,4.31L15.77,2.74C14.61,2.26 13.34,2 12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12M7.91,10.08L6.5,11.5L11,16L21,6L19.59,4.58L11,13.17L7.91,10.08Z" />
+                          </svg>
+                          Health Intervention Activated (Step {recoveryStartStep})
+                      </div>
+                  )}
+                  
+                  {/* First row - Histogram and Node Count Trends side by side */}
+                  <div style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      flexWrap: "wrap",
+                      gap: "10px",
+                      margin: "8px auto",
+                      maxWidth: "950px" /* Increased from 820px */
+                  }}>
+                      {/* Degree histogram */}
+                      <div className="trend-charts" style={{ flex: "1", minWidth: "375px" }}>
+                          <div className="chart-title">Node Degree Distribution</div>
+                          <svg width="100%" height="100" style={{ marginTop: '5px', marginBottom: '5px' }}>
+                              {(() => {
+                                  // Calculate node degrees and distribution
+                                  const degreeDistribution = calculateDegreeDistribution(nodeDegrees);
+                                  const entries = Object.entries(degreeDistribution)
+                                      .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
+                                      .filter(([degree]) => parseInt(degree) <= 15);
+                                      
+                                  // If no data, show empty state
+                                  if (entries.length === 0) return (
+                                      <text x="50%" y="50%" textAnchor="middle" fontSize="12" fill="#666">
+                                          No data available
+                                      </text>
+                                  );
+                                  
+                                  const maxCount = Math.max(...entries.map(e => parseInt(e[1])));
+                                  const chartWidth = 100; // Use percentage
+                                  const chartHeight = 100;
+                                  const padding = { top: 10, right: 5, bottom: 30, left: 10 };
+                                  
+                                  // Calculate the width of each bar based on available space
+                                  const barCount = entries.length;
+                                  const barSpacing = 2;
+                                  const barWidth = (chartWidth - padding.left - padding.right) / barCount - barSpacing;
+                                  
+                                  return (
+                                      <g>
+                                          {/* Draw x-axis */}
+                                          <line 
+                                              x1={`${padding.left}%`} 
+                                              y1={chartHeight - padding.bottom} 
+                                              x2={`${chartWidth - padding.right}%`} 
+                                              y2={chartHeight - padding.bottom} 
+                                              stroke="#333" 
+                                              strokeWidth="1" 
+                                          />
+                                          
+                                          {/* Draw bars */}
+                                          {entries.map(([degree, count], index) => {
+                                              const barHeight = maxCount > 0 
+                                                  ? ((count / maxCount) * (chartHeight - padding.top - padding.bottom)) 
+                                                  : 0;
+                                              
+                                              const xPos = padding.left + index * (barWidth + barSpacing);
+                                              const yPos = chartHeight - padding.bottom - barHeight;
+                                              
+                                              return (
+                                                  <g key={`bar-${degree}`}>
+                                                      {/* Bar */}
+                                                      <rect 
+                                                          x={`${xPos}%`}
+                                                          y={yPos}
+                                                          width={`${barWidth}%`}
+                                                          height={barHeight}
+                                                          fill={recoveryPhaseActive ? "#4CAF50" : "#80bfff"}
+                                                          stroke="#555"
+                                                          strokeWidth="0.5"
+                                                      />
+                                                      
+                                                      {/* Bar value (only for taller bars) */}
+                                                      {barHeight > 15 && (
+                                                          <text 
+                                                              x={`${xPos + barWidth/2}%`}
+                                                              y={yPos + 12}
+                                                              fontSize="10"
+                                                              fill="white"
+                                                              textAnchor="middle"
+                                                          >
+                                                              {count}
+                                                          </text>
+                                                      )}
+                                                      
+                                                      {/* X-axis label */}
+                                                      <text 
+                                                          x={`${xPos + barWidth/2}%`}
+                                                          y={chartHeight - padding.bottom + 15}
+                                                          fontSize="9"
+                                                          fill="#333"
+                                                          textAnchor="middle"
+                                                      >
+                                                          {degree}
+                                                      </text>
+                                                  </g>
+                                              );
+                                          })}
+                                          
+                                          {/* X-axis title */}
+                                          <text 
+                                              x="50%" 
+                                              y={chartHeight - 5}
+                                              fontSize="10"
+                                              fill="#666"
+                                              textAnchor="middle"
+                                          >
+                                              Node Degree
+                                          </text>
+                                      </g>
+                                  );
+                              })()}
+                          </svg>
+                      </div>
+                      
+                      {/* Node count trends */}
+                      <div className="trend-charts" style={{ flex: "1", minWidth: "400px" }}>
+                          <div className="chart-title">Node Count Trends</div>
+                          <svg width="100%" height="100" viewBox="0 0 800 120" preserveAspectRatio="xMidYMid meet">
+                              {/* Keep the existing line chart code here */}
+                              {(() => {
+                                  // Don't try to render if we have no history
+                                  if (nodeCountHistory.length < 2) return null;
+                                  
+                                  // Calculate boundaries
+                                  const maxStep = Math.max(step, 100); // Show at least 100 steps ahead
+                                  const maxCount = Math.max(
+                                      ...nodeCountHistory.map(h => h.group1),
+                                      ...nodeCountHistory.map(h => h.group2),
+                                      200 // Ensure at least 200 nodes height
+                                  );
+                                  
+                                  // Margins
+                                  const margin = { top: 8, right: 20, bottom: 22, left: 35 };
+                                  const width = 800 - margin.left - margin.right;
+                                  const height = 120 - margin.top - margin.bottom;
+                                  
+                                  // Scales
+                                  const xScale = (x) => margin.left + (x / maxStep) * width;
+                                  const yScale = (y) => margin.top + height - (y / maxCount) * height;
+                                  
+                                  // Generate line path
+                                  const generatePath = (data, key) => {
+                                      if (data.length === 0) return '';
+                                      return data.map((d, i) => 
+                                          `${i === 0 ? 'M' : 'L'} ${xScale(d.step)} ${yScale(d[key])}`
+                                      ).join(' ');
+                                  };
+                                  
+                                  return (
+                                      <g>
+                                          {/* X-axis */}
+                                          <line 
+                                              x1={margin.left} 
+                                              y1={margin.top + height} 
+                                              x2={margin.left + width} 
+                                              y2={margin.top + height} 
+                                              stroke="#333" 
+                                              strokeWidth="1" 
+                                          />
+                                          
+                                          {/* Y-axis */}
+                                          <line 
+                                              x1={margin.left} 
+                                              y1={margin.top} 
+                                              x2={margin.left} 
+                                              y2={margin.top + height} 
+                                              stroke="#333" 
+                                              strokeWidth="1" 
+                                          />
+                                          
+                                          {/* X-axis Labels */}
+                                          <text 
+                                              x={margin.left + width/2} 
+                                              y={margin.top + height + 21} 
+                                              textAnchor="middle" 
+                                              fontSize="10"
+                                              fill="#666"
+                                          >
+                                              Simulation Steps
+                                          </text>
+                                          
+                                          {/* Y-axis Labels */}
+                                          <text 
+                                              transform={`translate(${margin.left - 25}, ${margin.top + height/2}) rotate(-90)`}
+                                              textAnchor="middle" 
+                                              fontSize="10"
+                                              fill="#666"
+                                          >
+                                              Node Count
+                                          </text>
+                                          
+                                          {/* Ticks on X-axis */}
+                                          {[0, Math.floor(maxStep/4), Math.floor(maxStep/2), Math.floor(3*maxStep/4), maxStep].map(tick => (
+                                              <g key={`x-tick-${tick}`}>
+                                                  <line
+                                                      x1={xScale(tick)}
+                                                      y1={margin.top + height}
+                                                      x2={xScale(tick)}
+                                                      y2={margin.top + height + 5}
+                                                      stroke="#333"
+                                                  />
+                                                  <text
+                                                      x={xScale(tick)}
+                                                      y={margin.top + height + 15}
+                                                      textAnchor="middle"
+                                                      fontSize="9"
+                                                      fill="#333"
+                                                  >
+                                                      {tick}
+                                                  </text>
+                                              </g>
+                                          ))}
+                                          
+                                          {/* Ticks on Y-axis */}
+                                          {[0, Math.floor(maxCount/4), Math.floor(maxCount/2), Math.floor(3*maxCount/4), maxCount].map(tick => (
+                                              <g key={`y-tick-${tick}`}>
+                                                  <line
+                                                      x1={margin.left - 5}
+                                                      y1={yScale(tick)}
+                                                      x2={margin.left}
+                                                      y2={yScale(tick)}
+                                                      stroke="#333"
+                                                  />
+                                                  <text
+                                                      x={margin.left - 10}
+                                                      y={yScale(tick) + 3}
+                                                      textAnchor="end"
+                                                      fontSize="9"
+                                                      fill="#333"
+                                                  >
+                                                      {tick}
+                                                  </text>
+                                              </g>
+                                          ))}
+                                          
+                                          {/* Current step indicator line */}
+                                          <line
+                                              x1={xScale(step)}
+                                              y1={margin.top}
+                                              x2={xScale(step)}
+                                              y2={margin.top + height}
+                                              stroke="#333"
+                                              strokeWidth="1"
+                                              strokeDasharray="3,3"
+                                          />
+                                          
+                                          {/* Draw the lines */}
+                                          <path
+                                              d={generatePath(nodeCountHistory, 'group1')}
+                                              fill="none"
+                                              stroke="#d3d3d3"  // Non-risk factor color (gray)
+                                              strokeWidth="2"
+                                          />
+                                          
+                                          <path
+                                              d={generatePath(nodeCountHistory, 'group2')}
+                                              fill="none"
+                                              stroke="#ff4d4d"  // Risk factor color (red)
+                                              strokeWidth="2"
+                                          />
+                                          
+                                          
+                                          
+                                          {/* Recovery phase indicator */}
+                                          {recoveryPhaseActive && (
+                                              <>
+                                                  <rect
+                                                      x={xScale(recoveryStartStep)}
+                                                      y={margin.top}
+                                                      width={margin.left + width - xScale(recoveryStartStep)}
+                                                      height={height}
+                                                      fill="#4CAF50"
+                                                      opacity="0.15" /* Increased from 0.1 */
+                                                  />
+                                                  <line 
+                                                      x1={xScale(recoveryStartStep)} 
+                                                      y1={margin.top} 
+                                                      x2={xScale(recoveryStartStep)} 
+                                                      y2={margin.top + height}
+                                                      stroke="#4CAF50"
+                                                      strokeWidth="2"
+                                                      strokeDasharray="5,3"
+                                                  />
+                                                  <text
+                                                      x={xScale(recoveryStartStep) + 5}
+                                                      y={margin.top + 12}
+                                                      fontSize="9"
+                                                      fill="#4CAF50"
+                                                      fontWeight="bold"
+                                                  >
+                                                      Intervention
+                                                  </text>
+                                              </>
+                                          )}
+                                      </g>
+                                  );
+                              })()}
+                          </svg>
+                      </div>
+                  </div>
+                  
+                  <svg 
+                      width="100%" 
+                      height="100%" 
+                      viewBox={`0 0 ${width} ${height}`}
+                      style={{
+                          maxHeight: '680px',
+                          filter: flashNetwork ? "drop-shadow(0 0 10px #4CAF50)" : "none",
+                          transition: "filter 0.3s ease-in-out"
+                      }}
+                  >
+                      <defs>
+                          <filter id="glow">
+                              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                              <feFlood floodColor="gold" floodOpacity="0.5" result="glowColor"/>
+                              <feComposite in="glowColor" in2="coloredBlur" operator="in" result="softGlow"/>
+                              <feMerge>
+                                  <feMergeNode in="softGlow"/>
+                                  <feMergeNode in="SourceGraphic"/>
+                              </feMerge>
+                          </filter>
+                      </defs>
+                      
+                      <g transform="translate(20, 20)">
+                          <circle cx="10" cy="10" r="6" fill="#d3d3d3"/>
+                          <text x="25" y="15" className="text-sm">Non Risk Factor</text>
+                          <circle cx="10" cy="35" r="6" fill="#ff4d4d"/>
+                          <text x="25" y="40" className="text-sm">Risk Factor</text>
+                      </g>
+
+                      {activeLinks.map((link) => {
+                          const sourceNode = fixedNodes.find(node => node.id === link.source);
+                          const targetNode = fixedNodes.find(node => node.id === link.target);
+                          if (!sourceNode || !targetNode) return null;
+
+                          const dx = targetNode.x - sourceNode.x;
+                          const dy = targetNode.y - sourceNode.y;
+                          const currentX = sourceNode.x + dx * (link.progress || 1);
+                          const currentY = sourceNode.y + dy * (link.progress || 1);
+                          const opacity = link.deleting ? (0.4 * (1 - (link.deletionProgress || 0))) : 0.4;
+                          const transform = link.deleting ? `translate(${link.shakeOffset || 0},0)` : '';
+                          
+                          return (
+                              <line
+                                  key={link.key}
+                                  x1={sourceNode.x}
+                                  y1={sourceNode.y}
+                                  x2={currentX}
+                                  y2={currentY}
+                                  stroke="#000"
+                                  strokeWidth="1.5"
+                                  strokeOpacity={opacity}
+                                  transform={transform}
+                              />
+                          );
+                      })}
+                      
+                      {fixedNodes.map((node) => (
+                          <g key={node.id} transform={`translate(${node.x},${node.y})`}>
+                              <circle
+                                  r={Math.max(4, Math.min(18, 3 + (nodeDegrees[node.id - 1] || 0) * 2.5))}
+                                  fill={node.id === flashingNode 
+                                      ? interpolateColor(
+                                          colors[nodeGroups[node.id - 1] - 1] || colors[0], 
+                                          colors[nodeGroups[node.id - 1] === 1 ? 1 : 0] || colors[0], 
+                                          flashCount/100
+                                      ) 
+                                      : colors[nodeGroups[node.id - 1] - 1] || colors[0]}
+                                  opacity="0.9"
+                                  style={{ transition: "fill 500ms ease-in-out, r 300ms ease-out" }}
+                              />
+                          </g>
+                      ))}
+                  </svg>
+
+                  <div className="controls">
+                      <div className="control-group">
+                          <button onClick={() => setIsPlaying(!isPlaying)}>
+                              {isPlaying ? 'Stop' : 'Start'}
+                          </button>
+                          <button onClick={() => {
+                              if (!isPlaying) {
+                                  handleStep();
+                                  recalculateNodeCounts(); // Add this line
+                              }
+                          }} disabled={isPlaying || step >= changes.length}>
+                              Next step
+                          </button>
+                          <div className="slider-container">
+                              <label>Step {step} / {changes.length}</label>
+                              <input 
+                                  type="range" 
+                                  min="0" 
+                                  max={changes.length} 
+                                  step="1"
+                                  value={step} 
+                                  onChange={handleSliderChange}
+                              />
+                          </div>
+                          <div className="slider-container">
+                              <label>Step duration: {speed} ms</label>
+                              <input 
+                                  type="range" 
+                                  min="15" 
+                                  max="1000" 
+                                  value={speed} 
+                                  onChange={handleSpeedChange}
+                              />
+                          </div>
+                      </div>
+                      
+                  </div>
+                  
+                  
+              </div>
+          );
+      }
+
+      ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
