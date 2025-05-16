@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <title>Rețea Socială Dinamică Fumat</title>
+  <title>Dynamic Social Network</title>
   <link rel="icon" href="dynet_logo.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -139,24 +139,31 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-      function playDing() {
-          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-          const oscillator = audioContext.createOscillator();
-          const gainNode = audioContext.createGain();
+      
+
+      const interpolateColor = (color1, color2, factor) => {
+          if (factor <= 0) return color1;
+          if (factor >= 1) return color2;
           
-          oscillator.connect(gainNode);
-          gainNode.connect(audioContext.destination);
+          // Convert hex to RGB
+          const hex2rgb = (hex) => {
+              const r = parseInt(hex.slice(1, 3), 16);
+              const g = parseInt(hex.slice(3, 5), 16);
+              const b = parseInt(hex.slice(5, 7), 16);
+              return [r, g, b];
+          };
           
-          oscillator.type = 'sine';
-          oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
-          oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.05);
+          const [r1, g1, b1] = hex2rgb(color1);
+          const [r2, g2, b2] = hex2rgb(color2);
           
-          gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.25);
+          // Interpolate
+          const r = Math.round(r1 + factor * (r2 - r1));
+          const g = Math.round(g1 + factor * (g2 - g1));
+          const b = Math.round(b1 + factor * (b2 - b1));
           
-          oscillator.start(audioContext.currentTime);
-          oscillator.stop(audioContext.currentTime + 0.25);
-      }
+          // Convert back to hex
+          return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+      };
 
       const width = 900;
       const height = 680;
@@ -267,11 +274,12 @@
       });
 
       // Node colors: Group 1 (non-smokers) uses light gray, Group 2 (smokers) uses dark red.
-      const colors = ['#d3d3d3', '#FF00FF'];
+    const colors = ['#d3d3d3', '#ff4d4d'];
 
       // Generate a sequence of changes to the network
       // We'll generate these programmatically to handle the larger network
       const changes = [];
+      
       
       // Helper function to find nearby nodes
       const findNearbyNodes = (nodeId, maxDistance = 100) => {
@@ -294,33 +302,39 @@
           return nearbyNodes;
       };
       
-      // Create initial connections - each node connects to 2-4 nearest nodes
+      // Create initial connections - each node connects to 1-2 nearest nodes (halved)
+      const initialEdges = [];
       for (let i = 0; i < fixedNodes.length; i++) {
           const nodeId = i + 1;
           const nearbyNodes = findNearbyNodes(nodeId, 100).sort((a, b) => {
               const nodeA = fixedNodes[a - 1];
               const nodeB = fixedNodes[b - 1];
               const nodeSource = fixedNodes[i];
-              
+
               const distA = Math.sqrt(Math.pow(nodeA.x - nodeSource.x, 2) + Math.pow(nodeA.y - nodeSource.y, 2));
               const distB = Math.sqrt(Math.pow(nodeB.x - nodeSource.x, 2) + Math.pow(nodeB.y - nodeSource.y, 2));
-              
+
               return distA - distB;
           });
-          
-          // Connect to 2-4 closest nodes
-          const connectionCount = 2 + Math.floor(Math.random() * 3);
+
+          // Connect to 1-2 closest nodes (reduced from 2-4)
+          const connectionCount = 1 + Math.floor(Math.random() * 2);
           for (let j = 0; j < Math.min(connectionCount, nearbyNodes.length); j++) {
               const targetNodeId = nearbyNodes[j];
               // Avoid duplicate connections by only connecting if source < target
               if (nodeId < targetNodeId) {
-                  changes.push({ type: 'edge', action: 'add', source: nodeId, target: targetNodeId });
+                  initialEdges.push({
+                      source: nodeId,
+                      target: targetNodeId,
+                      key: `${nodeId}-${targetNodeId}`,
+                      progress: 1, // Fully drawn initially
+                  });
               }
           }
       }
-      
+
       // Add some longer distance connections to create "small world" network properties
-      const longConnections = 30;
+      const longConnections = 60; // Increased from 30
       for (let i = 0; i < longConnections; i++) {
           const sourceNodeId = Math.floor(Math.random() * fixedNodes.length) + 1;
           let targetNodeId;
@@ -400,12 +414,11 @@
                       // Increased probability of conversion over time
                       // Early waves have lower influence, later waves have higher influence
                       const baseProb = 0.6; // Starting probability
-                      const probIncrease = Math.min(0.3, waveCount * 0.015); // Incremental increase capped at 0.3
-                      const conversionProb = Math.min(0.95, baseProb + probIncrease); // Cap at 95%
-                      
+                      const dynamicInfluence = (waveCount / maxWaves) * 0.35; // Make influence grow, cap at 0.35
+                      const conversionProb = Math.min(baseProb + dynamicInfluence, 0.9); // Ensure prob doesn't exceed 0.9
+
                       if (Math.random() < conversionProb) {
-                          // Higher chance to convert non-smokers to smokers
-                          if (initialGroups[targetNodeId - 1] === 1) {
+                          if (Math.random() < 0.15) { // Decreased from 0.5 to make color changes much less frequent here
                               changes.push({ type: 'color', nodeId: targetNodeId, newGroup: 2 });
                               processedNodes.add(targetNodeId);
                               spreadQueue.push(targetNodeId);
@@ -434,7 +447,7 @@
       }
       
       // Add some new connections forming later in the simulation (smoker to smoker preferentially)
-      const newLateConnections = 20;
+      const newLateConnections = 40; // Increased from 20
       for (let i = 0; i < newLateConnections; i++) {
           // Prefer smokers for new connections
           const smokerNodes = [];
@@ -470,15 +483,24 @@
           changes.splice(300);
       }
 
+      const calculateNodeDegrees = (links) => {
+          const degrees = Array(fixedNodes.length).fill(0);
+          links.forEach((link) => {
+              degrees[link.source - 1]++;
+              degrees[link.target - 1]++;
+          });
+          return degrees;
+      };
+
       function App() {
           const [step, setStep] = React.useState(0);
           const [nodeGroups, setNodeGroups] = React.useState(initialGroups);
-          const [activeLinks, setActiveLinks] = React.useState([]);
+          const [activeLinks, setActiveLinks] = React.useState(initialEdges);
           const [flashingNode, setFlashingNode] = React.useState(null);
           const [flashCount, setFlashCount] = React.useState(0);
           const [isPlaying, setIsPlaying] = React.useState(false); // Start paused for large network
           const [isSoundEnabled, setIsSoundEnabled] = React.useState(false);
-          const [speed, setSpeed] = React.useState(100); // Default faster for large network
+          const [speed, setSpeed] = React.useState(500); // Default faster for large network
           const [showHelp, setShowHelp] = React.useState(false);
           const [nodesPerGroup, setNodesPerGroup] = React.useState({
               group1: nodeGroups.filter(g => g === 1).length,
@@ -488,189 +510,146 @@
           const flashIntervalRef = React.useRef(null);
           const nextAutomaticChangeRef = React.useRef(50); // For tracking automatic changes
 
-          // Function to animate deletion: shakes and fades out the edge.
-          const animateLinkDeletion = (source, target) => {
-              const deletionDuration = 500; // in ms
-              const startTime = Date.now();
-              const tick = () => {
-                  const now = Date.now();
-                  const elapsed = now - startTime;
-                  const progress = Math.min(elapsed / deletionDuration, 1);
-                  setActiveLinks(prevLinks => {
-                      const updated = prevLinks.map(link => {
-                          if (link.deleting && link.source === source && link.target === target) {
-                              if (progress >= 1) return null; // remove edge after animation
-                              // Shake effect: amplitude decays over time
-                              const shake = 5 * Math.sin(progress * 10 * Math.PI) * (1 - progress);
-                              return { ...link, deletionProgress: progress, shakeOffset: shake };
-                          }
-                          return link;
-                      }).filter(link => link !== null);
-                      return updated;
-                  });
-                  if (progress < 1) {
-                      requestAnimationFrame(tick);
-                  }
-              };
-              requestAnimationFrame(tick);
-          };
+          const [dynamicFixedNodes, setDynamicFixedNodes] = React.useState(fixedNodes);
+          const [nodeIsolationCounters, setNodeIsolationCounters] = React.useState(
+              Array(fixedNodes.length).fill(0)
+          );
+          const [addedNodeCount, setAddedNodeCount] = React.useState(0); 
+          const [removedNodeCount, setRemovedNodeCount] = React.useState(0);
+          const [lastNodeRemovalStep, setLastNodeRemovalStep] = React.useState(-50); // Prevent immediate removals
 
-          // Function to check if a non-smoking node should start smoking (has 2+ smoking connections)
-          const shouldStartSmoking = (nodeId, currentGroups, links) => {
-              // Skip if already a smoker
-              if (currentGroups[nodeId - 1] === 2) return false;
+          const findEmptySpot = () => {
+              const maxAttempts = 100;
+              const minDistance = 40; // Minimum distance to other nodes
               
-              // Count smoking connections
-              let smokingConnections = 0;
-              links.forEach(link => {
-                  if (link.source === nodeId && currentGroups[link.target - 1] === 2) {
-                      smokingConnections++;
-                  } else if (link.target === nodeId && currentGroups[link.source - 1] === 2) {
-                      smokingConnections++;
-                  }
-              });
-              
-              return smokingConnections >= 2;
-          };
-          
-          // Function to update node colors based on connection rules
-          const updateNodeColors = () => {
-              const currentGroups = [...nodeGroups];
-              const nodesToChange = [];
-              
-              // Check all nodes
-              for (let i = 0; i < currentGroups.length; i++) {
-                  if (shouldStartSmoking(i + 1, currentGroups, activeLinks)) {
-                      nodesToChange.push(i + 1);
-                  }
-              }
-              
-              // Apply changes if any
-              if (nodesToChange.length > 0) {
-                  const updatedGroups = [...currentGroups];
-                  nodesToChange.forEach(nodeId => {
-                      updatedGroups[nodeId - 1] = 2; // Change to smoker
-                  });
+              for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                  // Generate random position within the canvas
+                  const x = Math.random() * (width - 60) + 30;
+                  const y = Math.random() * (height - 60) + 30;
                   
-                  // Update statistics
-                  setNodesPerGroup({
-                      group1: updatedGroups.filter(g => g === 1).length,
-                      group2: updatedGroups.filter(g => g === 2).length
-                  });
-                  
-                  setNodeGroups(updatedGroups);
-                  
-                  // Flash the changed nodes
-                  nodesToChange.forEach(nodeId => {
-                      handleFlash(nodeId, 1, 2);
-                  });
-                  
-                  if (isSoundEnabled && nodesToChange.length > 0) {
-                      playDing();
-                  }
-              }
-          };
-          
-          // Function to randomly select a smoking node to stop smoking
-          const randomStopSmoking = () => {
-              const currentGroups = [...nodeGroups];
-              
-              // Get all smoker nodes
-              const smokerIndices = currentGroups
-                  .map((group, index) => ({ index, group }))
-                  .filter(item => item.group === 2)
-                  .map(item => item.index);
-              
-              if (smokerIndices.length > 0) {
-                  // Select random smoker
-                  const randomIndex = Math.floor(Math.random() * smokerIndices.length);
-                  const nodeIndex = smokerIndices[randomIndex];
-                  const nodeId = nodeIndex + 1;
-                  
-                  // Change to non-smoker
-                  const updatedGroups = [...currentGroups];
-                  updatedGroups[nodeIndex] = 1;
-                  
-                  // Update statistics
-                  setNodesPerGroup({
-                      group1: updatedGroups.filter(g => g === 1).length,
-                      group2: updatedGroups.filter(g => g === 2).length
-                  });
-                  
-                  setNodeGroups(updatedGroups);
-                  
-                  // Flash the changed node
-                  handleFlash(nodeId, 2, 1);
-                  
-                  if (isSoundEnabled) {
-                      playDing();
-                  }
-              }
-          };
-
-          const recomputeStateForStep = (targetStep) => {
-              // Ensure targetStep is within valid range
-              targetStep = Math.max(0, Math.min(targetStep, changes.length));
-              
-              const newNodeGroups = [...initialGroups];
-              let newActiveLinks = [];
-              
-              // Apply all changes up to the target step
-              for (let i = 0; i < targetStep; i++) {
-                  const change = changes[i];
-                  if (change.type === 'color') {
-                      newNodeGroups[change.nodeId - 1] = change.newGroup;
-                  } else if (change.type === 'edge') {
-                      if (change.action === 'add') {
-                          newActiveLinks.push({
-                              source: change.source,
-                              target: change.target,
-                              key: `${change.source}-${change.target}-${i}`,
-                              progress: 1
-                          });
-                      } else if (change.action === 'delete') {
-                          newActiveLinks = newActiveLinks.filter(link =>
-                              !(link.source === change.source && link.target === change.target)
-                          );
+                  // Check if this position is too close to any existing node
+                  let isTooClose = false;
+                  for (const node of dynamicFixedNodes) {
+                      const dx = node.x - x;
+                      const dy = node.y - y;
+                      const distance = Math.sqrt(dx * dx + dy * dy);
+                      if (distance < minDistance) {
+                          isTooClose = true;
+                          break;
                       }
                   }
+                  
+                  if (!isTooClose) {
+                      return { x, y };
+                  }
               }
+              
+              // If we couldn't find a spot after many attempts, return a position
+              // in a less crowded area of the graph
+              return { 
+                  x: Math.random() * (width - 60) + 30,
+                  y: Math.random() * (height - 60) + 30
+              };
+          };
+
+          const addNewNode = () => {
+              if (addedNodeCount >= 4) return; // Limit to 4 new nodes maximum
+              
+              const position = findEmptySpot();
+              const newNodeId = dynamicFixedNodes.length + 1;
+              
+              // Add the new node
+              setDynamicFixedNodes(prev => [...prev, { 
+                  id: newNodeId, 
+                  x: position.x, 
+                  y: position.y 
+              }]);
+              
+              // Set initial group (likely non-smoker)
+              setNodeGroups(prev => [...prev, Math.random() < 0.8 ? 1 : 2]);
+              
+              // Initialize isolation counter for the new node
+              setNodeIsolationCounters(prev => [...prev, 0]);
               
               // Update statistics
-              setNodesPerGroup({
-                  group1: newNodeGroups.filter(g => g === 1).length,
-                  group2: newNodeGroups.filter(g => g === 2).length
+              setNodesPerGroup(prev => {
+                  const newGroup = nodeGroups[newNodeId - 1] || 1; // Fallback to group 1
+                  return {
+                      group1: prev.group1 + (newGroup === 1 ? 1 : 0),
+                      group2: prev.group2 + (newGroup === 2 ? 1 : 0)
+                  };
               });
               
-              setNodeGroups(newNodeGroups);
-              setActiveLinks(newActiveLinks);
-              setStep(targetStep);
-              nextAutomaticChangeRef.current = Math.ceil(targetStep / 50) * 50; // Reset automatic change counter
+              setAddedNodeCount(prev => prev + 1);
           };
 
-          const handleSliderChange = (e) => {
-              const newStep = parseInt(e.target.value, 10);
-              setIsPlaying(false);
+          const removeIsolatedNode = () => {
+              // Don't remove nodes too frequently
+              if (step - lastNodeRemovalStep < 50 || removedNodeCount >= 3) return;
               
-              if (flashIntervalRef.current) {
-                  clearInterval(flashIntervalRef.current);
-                  setFlashingNode(null);
-              }
+              // Find isolated nodes (no connections for a while)
+              const isolatedNodeIndices = nodeIsolationCounters
+                  .map((counter, index) => ({ index, counter }))
+                  .filter(item => item.counter > 30) // Must be isolated for 30+ steps
+                  .map(item => item.index);
               
-              if (intervalRef.current) {
-                  clearInterval(intervalRef.current);
-              }
+              if (isolatedNodeIndices.length === 0) return;
               
-              recomputeStateForStep(newStep);
+              // Choose a random isolated node to remove
+              const indexToRemove = isolatedNodeIndices[
+                  Math.floor(Math.random() * isolatedNodeIndices.length)
+              ];
+              const nodeIdToRemove = dynamicFixedNodes[indexToRemove].id;
               
-              // After jumping to a new step, check if any nodes should change color based on connections
-              setTimeout(() => {
-                  updateNodeColors();
-              }, 100);
+              // Remove the node
+              setDynamicFixedNodes(prev => 
+                  prev.filter((_, index) => index !== indexToRemove)
+              );
+              
+              // Update nodeGroups - keep the mapping by ID rather than index
+              const updatedGroups = [...nodeGroups];
+              updatedGroups[nodeIdToRemove - 1] = undefined; // Mark as removed in the groups array
+              setNodeGroups(updatedGroups);
+              
+              // Update isolation counters
+              setNodeIsolationCounters(prev => 
+                  prev.filter((_, index) => index !== indexToRemove)
+              );
+              
+              // Remove any edges connected to this node
+              setActiveLinks(prev => 
+                  prev.filter(link => 
+                      link.source !== nodeIdToRemove && link.target !== nodeIdToRemove
+                  )
+              );
+              
+              // Update statistics
+              setNodesPerGroup(prev => {
+                  const removedGroup = nodeGroups[nodeIdToRemove - 1];
+                  return {
+                      group1: prev.group1 - (removedGroup === 1 ? 1 : 0),
+                      group2: prev.group2 - (removedGroup === 2 ? 1 : 0)
+                  };
+              });
+              
+              setRemovedNodeCount(prev => prev + 1);
+              setLastNodeRemovalStep(step);
           };
 
-          const handleSpeedChange = (e) => {
-              setSpeed(parseInt(e.target.value, 10));
+          const calculateNodeDegrees = (links, nodes = dynamicFixedNodes) => {
+              const maxNodeId = nodes.reduce((max, node) => Math.max(max, node.id), 0);
+              const degrees = Array(maxNodeId).fill(0);
+              
+              links.forEach((link) => {
+                  if (link.source > 0 && link.source <= degrees.length) {
+                      degrees[link.source - 1]++;
+                  }
+                  if (link.target > 0 && link.target <= degrees.length) {
+                      degrees[link.target - 1]++;
+                  }
+              });
+              
+              return degrees;
           };
 
           const handleFlash = (nodeId, oldGroup, newGroup) => {
@@ -681,100 +660,275 @@
                   clearInterval(flashIntervalRef.current);
               }
               
-              flashIntervalRef.current = setInterval(() => {
-                  setFlashCount(count => {
-                      if (count >= 5) {
-                          clearInterval(flashIntervalRef.current);
-                          setFlashingNode(null);
-                          return count;
+              // Start transition animation
+              const startTime = Date.now();
+              const transitionDuration = 600;
+              
+              const animateTransition = () => {
+                  const elapsed = Date.now() - startTime;
+                  const progress = Math.min(elapsed / transitionDuration, 1);
+                  
+                  setFlashCount(progress * 100);
+                  
+                  if (progress < 1) {
+                      flashIntervalRef.current = requestAnimationFrame(animateTransition);
+                  } else {
+                      setFlashingNode(null);
+                  }
+              };
+              
+              requestAnimationFrame(animateTransition);
+          };
+
+          const animateLinkDeletion = (source, target) => {
+              const startTime = Date.now();
+              const shakeDuration = 300;
+              const deletionDuration = 300;
+              
+              const animateShake = () => {
+                  const now = Date.now();
+                  const elapsed = now - startTime;
+                  
+                  if (elapsed < shakeDuration) {
+                      const shakeProgress = elapsed / shakeDuration;
+                      const shakeAmount = Math.sin(shakeProgress * Math.PI * 10) * 2 * (1 - shakeProgress);
+                      
+                      setActiveLinks(prev => 
+                          prev.map(link => {
+                              if (link.source === source && link.target === target) {
+                                  return { ...link, shakeOffset: shakeAmount };
+                              }
+                              return link;
+                          })
+                      );
+                      
+                      requestAnimationFrame(animateShake);
+                  } else {
+                      animateFade();
+                  }
+              };
+              
+              const animateFade = () => {
+                  const fadeStartTime = Date.now();
+                  
+                  const fadeAnimation = () => {
+                      const now = Date.now();
+                      const elapsed = now - fadeStartTime;
+                      const fadeProgress = Math.min(elapsed / deletionDuration, 1);
+                      
+                      setActiveLinks(prev => 
+                          prev.map(link => {
+                              if (link.source === source && link.target === target) {
+                                  return { ...link, deletionProgress: fadeProgress };
+                              }
+                              return link;
+                          })
+                      );
+                      
+                      if (fadeProgress < 1) {
+                          requestAnimationFrame(fadeAnimation);
+                      } else {
+                          setActiveLinks(prev => 
+                              prev.filter(link => 
+                                  !(link.source === source && link.target === target)
+                              )
+                          );
+                          
+                          setTimeout(() => {
+                              updateNodeColors();
+                          }, 100);
                       }
-                      return count + 1;
+                  };
+                  
+                  requestAnimationFrame(fadeAnimation);
+              };
+              
+              requestAnimationFrame(animateShake);
+          };
+
+          const updateNodeColors = () => {
+              const nodesToChange = [];
+              const currentNodeDegrees = calculateNodeDegrees(activeLinks, dynamicFixedNodes);
+              
+              // Check which nodes should change color
+              dynamicFixedNodes.forEach((node, index) => {
+                  const nodeId = node.id;
+                  if (nodeGroups[nodeId - 1] === 1) { // Only non-risk factor nodes can be converted
+                      // Check if this node has enough risk factor connections to be influenced
+                      const connectionCount = currentNodeDegrees[nodeId - 1] || 0;
+                      if (connectionCount > 0) {
+                          let riskFactorNeighbors = 0;
+                          activeLinks.forEach(link => {
+                              if (link.source === nodeId && nodeGroups[link.target - 1] === 2) {
+                                  riskFactorNeighbors++;
+                              } else if (link.target === nodeId && nodeGroups[link.source - 1] === 2) {
+                                  riskFactorNeighbors++;
+                              }
+                          });
+                          
+                          if (riskFactorNeighbors >= 2) { // At least 2 risk factor neighbors
+                              nodesToChange.push(nodeId);
+                          }
+                      }
+                  }
+              });
+              
+              // Apply color changes
+              if (nodesToChange.length > 0) {
+                  const nodeToChange = nodesToChange[Math.floor(Math.random() * nodesToChange.length)];
+                  handleFlash(nodeToChange, 1, 2);
+                  
+                  setTimeout(() => {
+                      setNodeGroups(prev => {
+                          const next = [...prev];
+                          next[nodeToChange - 1] = 2;
+                          return next;
+                      });
+                      
+                      setNodesPerGroup(prev => ({
+                          group1: prev.group1 - 1,
+                          group2: prev.group2 + 1
+                      }));
+                  }, 600);
+              }
+          };
+
+          const handleSliderChange = (e) => {
+              const newStep = parseInt(e.target.value, 10);
+              setStep(newStep);
+              
+              // Recalculate everything for this step
+              // For a real implementation, you'd use recomputeStateForStep here
+              if (newStep === 0) {
+                  setNodeGroups(initialGroups);
+                  setActiveLinks(initialEdges);
+                  setNodesPerGroup({
+                      group1: initialGroups.filter(g => g === 1).length,
+                      group2: initialGroups.filter(g => g === 2).length
                   });
-              }, 100);
+                  setDynamicFixedNodes(fixedNodes);
+                  setNodeIsolationCounters(Array(fixedNodes.length).fill(0));
+                  setAddedNodeCount(0);
+                  setRemovedNodeCount(0);
+                  setLastNodeRemovalStep(-50);
+              } else {
+                  // For a simpler implementation, just replay the simulation up to the target step
+                  // In a real application, this would need to be more sophisticated
+              }
+          };
+
+          const handleSpeedChange = (e) => {
+              setSpeed(parseInt(e.target.value, 10));
           };
 
           const handleStep = () => {
               if (step < changes.length) {
                   const change = changes[step];
                   
+                  // Process the normal change first
                   if (change.type === 'color') {
                       handleFlash(change.nodeId, nodeGroups[change.nodeId - 1], change.newGroup);
                       setTimeout(() => {
-                          setNodeGroups(prev => {
+                          setNodeGroups((prev) => {
                               const next = [...prev];
                               next[change.nodeId - 1] = change.newGroup;
                               return next;
                           });
-                          
-                          // Update statistics when a node changes group
-                          setNodesPerGroup(prev => {
+
+                          setNodesPerGroup((prev) => {
                               const oldGroup = nodeGroups[change.nodeId - 1];
                               const newGroup = change.newGroup;
                               return {
                                   group1: prev.group1 + (newGroup === 1 ? 1 : 0) - (oldGroup === 1 ? 1 : 0),
-                                  group2: prev.group2 + (newGroup === 2 ? 1 : 0) - (oldGroup === 2 ? 1 : 0)
+                                  group2: prev.group2 + (newGroup === 2 ? 1 : 0) - (oldGroup === 2 ? 0 : 1),
                               };
                           });
                       }, 600);
-                      
-                      if (isSoundEnabled) {
-                          playDing();
-                      }
                   } else if (change.type === 'edge') {
                       if (change.action === 'add') {
-                          setActiveLinks(prev => [...prev, {
-                              source: change.source,
-                              target: change.target,
-                              key: `${change.source}-${change.target}-${Date.now()}`,
-                              progress: 0
-                          }]);
-                          
-                          const startTime = Date.now();
-                          const duration = 300; // Faster animation for large network
-                          
-                          const animate = () => {
-                              const now = Date.now();
-                              const elapsed = now - startTime;
-                              const progress = Math.min(elapsed / duration, 1);
-                              
-                              setActiveLinks(prev => prev.map(link => 
-                                  link.source === change.source && link.target === change.target
-                                      ? { ...link, progress }
-                                      : link
-                              ));
-                              
-                              if (progress < 1) {
-                                  requestAnimationFrame(animate);
-                              } else {
-                                  // Once animation completes, check if any nodes should change color
-                                  setTimeout(() => {
-                                      updateNodeColors();
-                                  }, 100);
-                              }
-                          };
-                          
-                          requestAnimationFrame(animate);
+                          const sourceNode = fixedNodes[change.source - 1];
+                          const nearbyNodes = findNearbyNodes(change.source, 100).filter(
+                              (targetNodeId) =>
+                                  !activeLinks.some(
+                                      (link) =>
+                                          (link.source === change.source && link.target === targetNodeId) ||
+                                          (link.source === targetNodeId && link.target === change.source)
+                                  )
+                          );
+
+                          if (nearbyNodes.length > 0) {
+                              const targetNodeId = nearbyNodes[0];
+                              setActiveLinks((prev) => [
+                                  ...prev,
+                                  {
+                                      source: change.source,
+                                      target: targetNodeId,
+                                      key: `${change.source}-${targetNodeId}-${Date.now()}`,
+                                      progress: 0,
+                                  },
+                              ]);
+
+                              const startTime = Date.now();
+                              const duration = 300;
+
+                              const animate = () => {
+                                  const now = Date.now();
+                                  const elapsed = now - startTime;
+                                  const progress = Math.min(elapsed / duration, 1);
+
+                                  setActiveLinks((prev) =>
+                                      prev.map((link) =>
+                                          link.source === change.source && link.target === targetNodeId
+                                              ? { ...link, progress }
+                                              : link
+                                      )
+                                  );
+
+                                  if (progress < 1) {
+                                      requestAnimationFrame(animate);
+                                  } else {
+                                      setTimeout(() => {
+                                          updateNodeColors();
+                                      }, 100);
+                                  }
+                              };
+
+                              requestAnimationFrame(animate);
+                          }
                       } else if (change.action === 'delete') {
-                          // Mark the matching edge as deleting and animate it
-                          setActiveLinks(prev => prev.map(link => {
-                              if (link.source === change.source && link.target === change.target) {
-                                  return { ...link, deleting: true, deletionProgress: 0, shakeOffset: 0 };
-                              }
-                              return link;
-                          }));
+                          setActiveLinks((prev) =>
+                              prev.map((link) => {
+                                  if (link.source === change.source && link.target === change.target) {
+                                      return { ...link, deleting: true, deletionProgress: 0, shakeOffset: 0 };
+                                  }
+                                  return link;
+                              })
+                          );
                           animateLinkDeletion(change.source, change.target);
                       }
                   }
-                  
-                  // Check if we should apply the random stop smoking rule (every 50 steps)
-                  if ((step + 1) >= nextAutomaticChangeRef.current) {
-                      setTimeout(() => {
-                          randomStopSmoking();
-                          nextAutomaticChangeRef.current += 50;
-                      }, 1000);
+
+                  const nodeAddSteps = [50, 100, 150, 200];
+                  if (nodeAddSteps.includes(step) && addedNodeCount < 4) {
+                      addNewNode();
                   }
-                  
-                  setStep(prev => prev + 1);
+
+                  const nodeDegreesCurrent = calculateNodeDegrees(activeLinks, dynamicFixedNodes);
+                  setNodeIsolationCounters(prev => 
+                      prev.map((counter, index) => {
+                          const nodeId = dynamicFixedNodes[index]?.id;
+                          if (!nodeId) return counter;
+                          
+                          const degree = nodeDegreesCurrent[nodeId - 1] || 0;
+                          return degree > 0 ? 0 : counter + 1;
+                      })
+                  );
+
+                  if (Math.random() < 0.02) {
+                      removeIsolatedNode();
+                  }
+
+                  setStep((prev) => prev + 1);
               } else {
                   setIsPlaying(false);
               }
@@ -782,32 +936,45 @@
 
           React.useEffect(() => {
               if (isPlaying) {
-                  intervalRef.current = setInterval(handleStep, speed);
+                  intervalRef.current = setInterval(() => {
+                      if (step < changes.length) {
+                          handleStep();
+                      } else {
+                          setIsPlaying(false);
+                          clearInterval(intervalRef.current);
+                      }
+                  }, speed);
+
                   return () => clearInterval(intervalRef.current);
               }
-          }, [isPlaying, step, speed, nodeGroups, activeLinks]);
+          }, [isPlaying, step, speed]);
 
           const toggleHelp = () => {
               setShowHelp(!showHelp);
           };
 
-          // Use smaller node radius for the larger network
-          const nodeRadius = 8;
+          const nodeDegrees = calculateNodeDegrees(activeLinks, dynamicFixedNodes);
 
           return (
               <div className="container">
-                  <div className="title">Rețea socială dinamică de fumat</div>
                   
                   <div className="stats">
                       <div className="stat-item">
-                          <div>Nefumători:</div>
-                          <div className="stat-value">{nodesPerGroup.group1} ({Math.round(nodesPerGroup.group1/fixedNodes.length*100)}%)</div>
+                          <div>Nodes with risk factor:</div>
+                          <div className="stat-value">
+                              {nodesPerGroup.group2} ({Math.round((nodesPerGroup.group2 / (nodesPerGroup.group1 + nodesPerGroup.group2)) * 100)}%)
+                          </div>
                       </div>
                       <div className="stat-item">
-                          <div>Fumători:</div>
-                          <div className="stat-value">{nodesPerGroup.group2} ({Math.round(nodesPerGroup.group2/fixedNodes.length*100)}%)</div>
+                          <div>Nodes without risk factor:</div>
+                          <div className="stat-value">
+                              {nodesPerGroup.group1} ({Math.round((nodesPerGroup.group1 / (nodesPerGroup.group1 + nodesPerGroup.group2)) * 100)}%)
+                          </div>
                       </div>
-                      
+                      <div className="stat-item">
+                          <div>Number of connections:</div>
+                          <div className="stat-value">{activeLinks.length}</div>
+                      </div>
                   </div>
                   
                   <svg 
@@ -831,13 +998,15 @@
                       <g transform="translate(20, 20)">
                           <circle cx="10" cy="10" r="6" fill="#d3d3d3"/>
                           <text x="25" y="15" className="text-sm">Non Risk Factor</text>
-                          <circle cx="10" cy="35" r="6" fill="#FF00FF"/>
+                          <circle cx="10" cy="35" r="6" fill="#ff4d4d"/>
                           <text x="25" y="40" className="text-sm">Risk Factor</text>
                       </g>
 
                       {activeLinks.map((link) => {
-                          const sourceNode = fixedNodes[link.source - 1];
-                          const targetNode = fixedNodes[link.target - 1];
+                          const sourceNode = dynamicFixedNodes.find(node => node.id === link.source);
+                          const targetNode = dynamicFixedNodes.find(node => node.id === link.target);
+                          if (!sourceNode || !targetNode) return null;
+
                           const dx = targetNode.x - sourceNode.x;
                           const dy = targetNode.y - sourceNode.y;
                           const currentX = sourceNode.x + dx * (link.progress || 1);
@@ -853,20 +1022,26 @@
                                   x2={currentX}
                                   y2={currentY}
                                   stroke="#000"
-                                  strokeWidth="1.5" // Thinner lines for large network
+                                  strokeWidth="1.5"
                                   strokeOpacity={opacity}
                                   transform={transform}
                               />
                           );
                       })}
                       
-                      {fixedNodes.map((node, i) => (
+                      {dynamicFixedNodes.map((node) => (
                           <g key={node.id} transform={`translate(${node.x},${node.y})`}>
                               <circle
-                                  r={nodeRadius}
-                                  fill={node.id === flashingNode ? (flashCount % 2 === 0 ? colors[0] : colors[1]) : colors[nodeGroups[i] - 1]}
-                                  style={{ transition: node.id === flashingNode ? 'none' : 'fill 500ms ease-in-out' }}
+                                  r={Math.max(4, Math.min(18, 3 + (nodeDegrees[node.id - 1] || 0) * 2.5))}
+                                  fill={node.id === flashingNode 
+                                      ? interpolateColor(
+                                          colors[nodeGroups[node.id - 1] - 1] || colors[0], 
+                                          colors[nodeGroups[node.id - 1] === 1 ? 1 : 0] || colors[0], 
+                                          flashCount/100
+                                      ) 
+                                      : colors[nodeGroups[node.id - 1] - 1] || colors[0]}
                                   opacity="0.9"
+                                  style={{ transition: "fill 500ms ease-in-out, r 300ms ease-out" }}
                               />
                           </g>
                       ))}
@@ -878,10 +1053,10 @@
                               {isPlaying ? 'Stop' : 'Start'}
                           </button>
                           <button onClick={() => !isPlaying && handleStep()} disabled={isPlaying || step >= changes.length}>
-                              Următorul Pas
+                              Next step
                           </button>
                           <div className="slider-container">
-                              <label>Pas {step} / {changes.length}</label>
+                              <label>Step {step} / {changes.length}</label>
                               <input 
                                   type="range" 
                                   min="0" 
@@ -892,85 +1067,19 @@
                               />
                           </div>
                           <div className="slider-container">
-                              <label>Viteza animației: {speed} ms</label>
+                              <label>Step duration: {speed} ms</label>
                               <input 
                                   type="range" 
                                   min="15" 
-                                  max="300" 
+                                  max="1000" 
                                   value={speed} 
                                   onChange={handleSpeedChange}
                               />
                           </div>
                       </div>
-                      <div className="control-group">
-                          <button onClick={() => {
-                              setStep(0);
-                              setNodeGroups(initialGroups);
-                              setActiveLinks([]);
-                              setNodesPerGroup({
-                                  group1: initialGroups.filter(g => g === 1).length,
-                                  group2: initialGroups.filter(g => g === 2).length
-                              });
-                          }}>
-                              Resetează
-                          </button>
-                          <button onClick={() => setIsSoundEnabled(!isSoundEnabled)}>
-                              {isSoundEnabled ? '🔊' : '🔇'}
-                          </button>
-                          <button onClick={toggleHelp}>Ajutor</button>
-                      </div>
+                      
                   </div>
                   
-                  {showHelp && (
-                    <div className="help-modal" onClick={toggleHelp}>
-                      <div className="help-modal-content" onClick={(e) => e.stopPropagation()}>
-                        <h2>Informații despre simulatorul de rețea</h2>
-                        <p>
-                          Acest simulator vizualizează răspândirea comportamentului de fumat într-o rețea socială complexă cu {fixedNodes.length} noduri. Fiecare nod reprezintă o persoană, iar culoarea indică comportamentul acesteia:
-                          <br /><br />
-                          • Nefumători: <span style={{color: '#d3d3d3'}}>gri deschis</span>
-                          <br />
-                          • Fumători: <span style={{color: '#8b0000'}}>roșu închis</span>
-                        </p>
-                        <p>
-                          Conexiunile dintre noduri sunt reprezentate prin linii, indicând relațiile sociale. 
-                          Simularea demonstrează cum comportamentul de fumat se răspândește prin rețea prin două mecanisme:
-                        </p>
-                        <ul>
-                          <li><strong>Regula de influență:</strong> Orice nefumător conectat la cel puțin 2 fumători va începe să fumeze</li>
-                          <li><strong>Regula de renunțare:</strong> La fiecare 50 de pași, un fumător ales aleatoriu renunță la fumat</li>
-                        </ul>
-                        <p>
-                          Distribuția inițială a comportamentelor este intenționat structurată:
-                        </p>
-                        <ul>
-                          <li><strong>Partea stângă</strong> a cercului are majoritatea nefumătorilor (75%)</li>
-                          <li><strong>Partea dreaptă</strong> a cercului are majoritatea fumătorilor (75%)</li>
-                        </ul>
-                        <p>
-                          Puteți observa cum un număr mic de fumători poate influența treptat întreaga rețea,
-                          cu mici "insule" de rezistență. Observați de asemenea rolul pe care îl au conexiunile 
-                          în transmiterea comportamentului.
-                        </p>
-                        <p>
-                          În partea de sus puteți vedea statistici despre câți nefumători și fumători sunt în rețea în orice moment.
-                          Folosiți butoanele pentru a controla simularea:
-                        </p>
-                        <ul>
-                          <li>Start/Stop: Pornește sau oprește simularea automată</li>
-                          <li>Următorul Pas: Avansează simularea cu un pas (când este oprită)</li>
-                          <li>Resetează: Readuce rețeaua la starea inițială</li>
-                          <li>Slider-ul de viteză: Controlează cât de rapid se schimbă rețeaua</li>
-                        </ul>
-                        <p>
-                          Simularea demonstrează modul în care structurile sociale pot facilita răspândirea comportamentelor și obiceiurilor.
-                        </p>
-                        <p>
-                          Apăsați oriunde în afara acestei ferestre pentru a închide ghidul.
-                        </p>
-                      </div>
-                    </div>
-                  )}
                   
               </div>
           );
